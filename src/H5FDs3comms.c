@@ -56,7 +56,7 @@
 #define S3COMMS_DEBUG_TRACE_API      2
 #define S3COMMS_DEBUG_TRACE_INTERNAL 3
 #define S3COMMS_DEBUG_HEADERS        4
-#define S3COMMS_DEBUG                S3COMMS_DEBUG_NONE
+#define S3COMMS_DEBUG                S3COMMS_DEBUG_REQUESTS
 
 /* manipulate verbosity of CURL output
  * operates separately from S3COMMS_DEBUG
@@ -1300,7 +1300,7 @@ H5FD_s3comms_s3r_read(s3r_t *handle, haddr_t offset, size_t len, void *dest)
             HGOTO_ERROR(H5E_ARGS, H5E_BADVALUE, FAIL, "unable to format HTTP Range value");
     }
 
-#if S3COMMS_DEBUG
+#if S3COMMS_DEBUG >= S3COMMS_DEBUG_HEADERS
     HDfprintf(stderr, "%s: Bytes %" PRIuHADDR " - %" PRIuHADDR ", Request Size: %zu\n", handle->httpverb,
               offset, offset + len, len);
 #endif
