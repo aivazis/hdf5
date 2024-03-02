@@ -58,7 +58,7 @@ set (H5WATCH_TEST_FILES
 file (MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/testfiles")
 
 foreach (h5watch_file ${H5WATCH_TEST_FILES})
-  HDFTEST_COPY_FILE("${HDF5_HL_TOOLS_DIR}/testfiles/${h5watch_file}" "${PROJECT_BINARY_DIR}/testfiles/${h5watch_file}" "H5WATCH_files")
+  HDFTEST_COPY_FILE("${PROJECT_SOURCE_DIR}/testfiles/${h5watch_file}" "${PROJECT_BINARY_DIR}/testfiles/${h5watch_file}" "H5WATCH_files")
 endforeach ()
 add_custom_target(H5WATCH_files ALL COMMENT "Copying files needed by H5WATCH tests" DEPENDS ${H5WATCH_files_list})
 
@@ -86,6 +86,9 @@ add_custom_target(H5WATCH_files ALL COMMENT "Copying files needed by H5WATCH tes
           DEPENDS ${last_test}
           FIXTURES_REQUIRED gen_test_watch
       )
+      if ("H5WATCH_ARGS-h5watch-${resultfile}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+        set_tests_properties (H5WATCH_ARGS-h5watch-${resultfile} PROPERTIES DISABLED true)
+      endif ()
       set (last_test "H5WATCH_ARGS-h5watch-${resultfile}")
     endif ()
   endmacro ()
@@ -102,13 +105,17 @@ add_custom_target(H5WATCH_files ALL COMMENT "Copying files needed by H5WATCH tes
               -D "TEST_OUTPUT=${resultfile}.out"
               -D "TEST_EXPECT=${resultcode}"
               -D "TEST_REFERENCE=${resultfile}.mty"
-              -D "TEST_ERRREF=${resultfile}.err"
-              -P "${HDF_RESOURCES_DIR}/runTest.cmake"
+              -D "TEST_ERRREF=h5watch error"
+              -D "TEST_SKIP_COMPARE=true"
+              -P "${HDF_RESOURCES_DIR}/grepTest.cmake"
       )
       set_tests_properties (H5WATCH_ARGS-h5watch-${resultfile} PROPERTIES
           DEPENDS ${last_test}
           FIXTURES_REQUIRED gen_test_watch
       )
+      if ("H5WATCH_ARGS-h5watch-${resultfile}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+        set_tests_properties (H5WATCH_ARGS-h5watch-${resultfile} PROPERTIES DISABLED true)
+      endif ()
       set (last_test "H5WATCH_ARGS-h5watch-${resultfile}")
     endif ()
   endmacro ()
@@ -131,6 +138,9 @@ add_custom_target(H5WATCH_files ALL COMMENT "Copying files needed by H5WATCH tes
           DEPENDS ${last_test}
           FIXTURES_REQUIRED gen_test_watch
       )
+      if ("H5WATCH-${resultfile}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+        set_tests_properties (H5WATCH-${resultfile} PROPERTIES DISABLED true)
+      endif ()
       set (last_test "H5WATCH-${resultfile}")
     endif ()
   endmacro ()

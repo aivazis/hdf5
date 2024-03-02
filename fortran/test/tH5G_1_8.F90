@@ -129,10 +129,6 @@ END SUBROUTINE group_test
 ! * Return:      Success:        0
 ! *              Failure:        -1
 ! *
-! * Programmer:  Adapted from C test routines by
-! *              M.S. Breitenfeld
-! *              February 18, 2008
-! *
 ! *-------------------------------------------------------------------------
 !
 
@@ -196,48 +192,18 @@ SUBROUTINE group_info(cleanup, fapl, total_error)
            IF(idx_type == H5_INDEX_CRT_ORDER_F)THEN
               IF(iorder == H5_ITER_INC_F)THEN
                  order = H5_ITER_INC_F
-!!$                 IF(use_index(i))THEN
-!!$                    WRITE(*,'(5x,A)')"query group info by creation order index in increasing order w/creation order index"
-!!$                 ELSE
-!!$                    WRITE(*,'(5x,A)')"query group info by creation order index in increasing order w/o creation order index"
-!!$                 ENDIF
               ELSE IF (iorder == H5_ITER_DEC_F) THEN
                  order = H5_ITER_DEC_F
-!!$                 IF(use_index(i))THEN
-!!$                    WRITE(*,'(5x,A)')"query group info by creation order index in decreasing order w/creation order index"
-!!$                 ELSE
-!!$                    WRITE(*,'(5x,A)')"query group info by creation order index in decreasing order w/o creation order index"
-!!$                 ENDIF
               ELSE
                  order = H5_ITER_NATIVE_F
-!!$                 IF(use_index(i))THEN
-!!$                    WRITE(*,'(5x,A)')"query group info by creation order index in native order w/creation order index"
-!!$                 ELSE
-!!$                    WRITE(*,'(5x,A)')"query group info by creation order index in native order w/o creation order index"
-!!$                 ENDIF
               ENDIF
            ELSE
               IF(iorder == H5_ITER_INC_F)THEN
                  order = H5_ITER_INC_F
-!!$                 IF(use_index(i))THEN
-!!$                    WRITE(*,'(5x,A)')"query group info by creation order index in increasing order w/creation order index"
-!!$                 ELSE
-!!$                    WRITE(*,'(5x,A)')"query group info by creation order index in increasing order w/o creation order index"
-!!$                 ENDIF
               ELSE IF (iorder == H5_ITER_DEC_F) THEN
                  order = H5_ITER_DEC_F
-!!$                 IF(use_index(i))THEN
-!!$                    WRITE(*,'(5x,A)')"query group info by creation order index in decreasing order w/creation order index"
-!!$                 ELSE
-!!$                    WRITE(*,'(5x,A)')"query group info by creation order index in decreasing order w/o creation order index"
-!!$                 ENDIF
               ELSE
                  order = H5_ITER_NATIVE_F
-!!$                 IF(use_index(i))THEN
-!!$                    WRITE(*,'(5x,A)')"query group info by creation order index in native order w/creation order index"
-!!$                 ELSE
-!!$                    WRITE(*,'(5x,A)')"query group info by creation order index in native order w/o creation order index"
-!!$                 ENDIF
               ENDIF
            END IF
 
@@ -552,11 +518,6 @@ END SUBROUTINE group_info
 ! *
 ! * Purpose:     Verify that disabling tracking timestamps for an object
 ! *              works correctly
-! *
-! *
-! * Programmer:  M.S. Breitenfeld
-! *              February 20, 2008
-! *
 ! *-------------------------------------------------------------------------
 !
 
@@ -745,10 +706,6 @@ END SUBROUTINE group_info
 ! *
 ! * Purpose:	Build a file with assorted links.
 ! *
-! *
-! * Programmer:	Adapted from C test by:
-! *             M.S. Breitenfeld
-! *
 ! *-------------------------------------------------------------------------
 !
 
@@ -764,8 +721,8 @@ END SUBROUTINE group_info
      INTEGER ::   arank = 1                      ! Attribute rank
      INTEGER :: error
 
-     INTEGER :: cset ! Indicates the character set used for the link’s name.
-     INTEGER :: corder ! Specifies the link’s creation order position.
+     INTEGER :: cset ! Indicates the character set used for the link's name.
+     INTEGER :: corder ! Specifies the link's creation order position.
      LOGICAL :: f_corder_valid ! Indicates whether the value in corder is valid.
      INTEGER :: link_type ! Specifies the link class:
                           !  H5L_TYPE_HARD_F      - Hard link
@@ -836,10 +793,6 @@ END SUBROUTINE group_info
 ! *
 ! * Purpose:     Tests that moving and renaming links preserves their
 ! *              properties.
-! *
-! * Programmer:  M.S. Breitenfeld
-! *              March 3, 2008
-! *
 ! *-------------------------------------------------------------------------
 !
 
@@ -867,8 +820,8 @@ END SUBROUTINE group_info
     INTEGER :: crt_order_flags !  Status of creation order info for GCPL
     CHARACTER(LEN=12), PARAMETER :: filename = 'TestLinks.h5'
 
-    INTEGER :: cset ! Indicates the character set used for the link’s name.
-    INTEGER :: corder ! Specifies the link’s creation order position.
+    INTEGER :: cset ! Indicates the character set used for the link's name.
+    INTEGER :: corder ! Specifies the link's creation order position.
     LOGICAL :: f_corder_valid ! Indicates whether the value in corder is valid.
     INTEGER :: link_type ! Specifies the link class:
                          !  H5L_TYPE_HARD_F      - Hard link
@@ -936,8 +889,8 @@ END SUBROUTINE group_info
 !    old_modification_time = oinfo.mtime;
 
 !     If this test happens too quickly, the times will all be the same.  Make sure the time changes.
-!    curr_time = HDtime(NULL);
-!    while(HDtime(NULL) <= curr_time)
+!    curr_time = time(NULL);
+!    while(time(NULL) <= curr_time)
 !        ;
 
 !     Close the file and reopen it
@@ -1041,10 +994,6 @@ END SUBROUTINE group_info
 ! * Return:      Success:        0
 ! *
 ! *              Failure:        -1
-! *
-! * Programmer:  Quincey Koziol
-! *              Monday, October 17, 2005
-! *
 ! *-------------------------------------------------------------------------
 !
 SUBROUTINE lifecycle(cleanup, fapl2, total_error)
@@ -1182,10 +1131,6 @@ SUBROUTINE lifecycle(cleanup, fapl2, total_error)
 ! * Return:	Success:	0
 ! *
 ! *		Failure:	-1
-! *
-! * Programmer:	M.S. Breitenfeld
-! *             April 14, 2008
-! *
 ! *-------------------------------------------------------------------------
 !
 
@@ -1251,12 +1196,6 @@ END SUBROUTINE cklinks
 ! *
 ! * Return:      Total error
 ! *
-! * C Programmer:  Quincey Koziol
-! *                Tuesday, November 14, 2006
-! *
-! * Adapted to FORTRAN: M.S. Breitenfeld
-! *                     March 3, 2008
-! *
 ! *-------------------------------------------------------------------------
 !
 SUBROUTINE delete_by_idx(cleanup, fapl, total_error)
@@ -1281,7 +1220,7 @@ SUBROUTINE delete_by_idx(cleanup, fapl, total_error)
 
   LOGICAL :: f_corder_valid ! Indicates whether the creation order data is valid for this attribute
   INTEGER :: corder ! Is a positive integer containing the creation order of the attribute
-  INTEGER :: cset ! Indicates the character set used for the attribute’s name
+  INTEGER :: cset ! Indicates the character set used for the attribute's name
   INTEGER(SIZE_T) :: val_size
   INTEGER :: link_type
   TYPE(H5O_TOKEN_T_F) :: token
@@ -1294,19 +1233,9 @@ SUBROUTINE delete_by_idx(cleanup, fapl, total_error)
   CHARACTER(LEN=2) :: chr2
   INTEGER :: error
   INTEGER :: id_type
-  !
-  !
-  !
-  CHARACTER(LEN=80) :: fix_filename1
-  CHARACTER(LEN=80) :: fix_filename2
   INTEGER(HSIZE_T) :: htmp
 
   LOGICAL :: cleanup
-
-  DO i = 1, 80
-     fix_filename1(i:i) = " "
-     fix_filename2(i:i) = " "
-  ENDDO
 
   !  Loop over operating on different indices on link fields
   DO idx_type = H5_INDEX_NAME_F, H5_INDEX_CRT_ORDER_F
@@ -1314,36 +1243,6 @@ SUBROUTINE delete_by_idx(cleanup, fapl, total_error)
      DO iorder = H5_ITER_INC_F,  H5_ITER_DEC_F
         !  Loop over using index for creation order value
         DO i = 1, 2
-           !  Print appropriate test message
-!!$           IF(idx_type == H5_INDEX_CRT_ORDER_F)THEN
-!!$              IF(iorder == H5_ITER_INC_F)THEN
-!!$                 IF(use_index(i))THEN
-!!$                    WRITE(*,'(5x,A)')"deleting links by creation order index in increasing order w/creation order index"
-!!$                 ELSE
-!!$                    WRITE(*,'(5x,A)')"deleting links by creation order index in increasing order w/o creation order index"
-!!$                 ENDIF
-!!$              ELSE
-!!$                 IF(use_index(i))THEN
-!!$                    WRITE(*,'(5x,A)')"deleting links by creation order index in decreasing order w/creation order index"
-!!$                 ELSE
-!!$                    WRITE(*,'(5x,A)')"deleting links by creation order index in decreasing order w/o creation order index"
-!!$                 ENDIF
-!!$              ENDIF
-!!$           ELSE
-!!$              IF(iorder == H5_ITER_INC_F)THEN
-!!$                 IF(use_index(i))THEN
-!!$                    WRITE(*,'(5x,A)')"deleting links by name index in increasing order w/creation order index"
-!!$                 ELSE
-!!$                    WRITE(*,'(5x,A)')"deleting links by name index in increasing order w/o creation order index"
-!!$                 ENDIF
-!!$              ELSE
-!!$                 IF(use_index(i))THEN
-!!$                    WRITE(*,'(5x,A)')"deleting links by name index in decreasing order w/creation order index"
-!!$                 ELSE
-!!$                    WRITE(*,'(5x,A)')"deleting links by name index in decreasing order w/o creation order index"
-!!$                 ENDIF
-!!$              ENDIF
-!!$           ENDIF
 
            !  Create file
            CALL H5Fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error, access_prp=fapl)
@@ -1411,7 +1310,7 @@ SUBROUTINE delete_by_idx(cleanup, fapl, total_error)
               CALL H5Ldelete_by_idx_f(group_id, ".", idx_type, iorder, INT(0,HSIZE_T), error)
               CALL check("H5Ldelete_by_idx_f", error, total_error)
               !  Verify the link information for first link in appropriate order
-              ! HDmemset(&linfo, 0, sizeof(linfo));
+              ! memset(&linfo, 0, sizeof(linfo));
 
               CALL H5Lget_info_by_idx_f(group_id, ".", idx_type, iorder, INT(0,HSIZE_T), &
                    link_type, f_corder_valid, corder, cset, token, val_size, error)
@@ -1441,7 +1340,7 @@ SUBROUTINE delete_by_idx(cleanup, fapl, total_error)
 
 
               !  Verify the name for first link in appropriate order
-              ! HDmemset(tmpname, 0, (size_t)NAME_BUF_SIZE);
+              ! memset(tmpname, 0, (size_t)NAME_BUF_SIZE);
 !!$              size_tmp = 20
 !!$              CALL H5Lget_name_by_idx_f(group_id, ".", idx_type, order, INT(0,HSIZE_T), size_tmp, tmpname, error)
 !!$              CALL check("delete_by_idx.H5Lget_name_by_idx_f", error, total_error)
@@ -1491,10 +1390,6 @@ END SUBROUTINE delete_by_idx
 ! *
 ! * Return:      Success:        0
 ! *              Failure:        -1
-! *
-! * Programmer:  Quincey Koziol
-! *              Tuesday, November  7, 2006
-! *
 ! *-------------------------------------------------------------------------
 !
 SUBROUTINE link_info_by_idx_check(group_id, linkname, n, &
@@ -1510,7 +1405,7 @@ SUBROUTINE link_info_by_idx_check(group_id, linkname, n, &
 
   LOGICAL :: f_corder_valid ! Indicates whether the creation order data is valid for this attribute
   INTEGER :: corder ! Is a positive integer containing the creation order of the attribute
-  INTEGER :: cset ! Indicates the character set used for the attribute’s name
+  INTEGER :: cset ! Indicates the character set used for the attribute's name
   INTEGER :: link_type
   TYPE(H5O_TOKEN_T_F) :: token
   INTEGER(SIZE_T) :: val_size   ! Indicates the size, in the number of characters, of the attribute
@@ -1530,14 +1425,14 @@ SUBROUTINE link_info_by_idx_check(group_id, linkname, n, &
   valname = 'valn.'//chr2
 
   !  Verify the link information for first link, in increasing creation order
-  !  HDmemset(&linfo, 0, sizeof(linfo));
+  !  memset(&linfo, 0, sizeof(linfo));
   CALL H5Lget_info_by_idx_f(group_id, ".", H5_INDEX_CRT_ORDER_F, H5_ITER_INC_F, INT(0,HSIZE_T), &
        link_type, f_corder_valid, corder, cset, token, val_size, error)
   CALL check("H5Lget_info_by_idx_f", error, total_error)
   CALL verify("H5Lget_info_by_idx_f", corder, 0, total_error)
 
   !  Verify the link information for new link, in increasing creation order
-  ! HDmemset(&linfo, 0, sizeof(linfo));
+  ! memset(&linfo, 0, sizeof(linfo));
   CALL H5Lget_info_by_idx_f(group_id, ".", H5_INDEX_CRT_ORDER_F, H5_ITER_INC_F, INT(n,HSIZE_T), &
        link_type, f_corder_valid, corder, cset, token, val_size, error)
   CALL check("H5Lget_info_by_idx_f", error, total_error)
@@ -1545,16 +1440,16 @@ SUBROUTINE link_info_by_idx_check(group_id, linkname, n, &
 
   !  Verify value for new soft link, in increasing creation order
 !!$  IF(hard_link)THEN
-!!$     ! HDmemset(tmpval, 0, (size_t)NAME_BUF_SIZE);
+!!$     ! memset(tmpval, 0, (size_t)NAME_BUF_SIZE);
 !!$
 !!$     CALL H5Lget_val_by_idx_f(group_id, ".", H5_INDEX_CRT_ORDER_F, H5_ITER_INC_F, n, tmpval, INT(7,SIZE_T),error)
 !!$     CALL check("H5Lget_val_by_idx",error,total_error)
 !!$
-!!$!     IF(HDstrcmp(valname, tmpval)) TEST_ERROR
+!!$!     IF(strcmp(valname, tmpval)) TEST_ERROR
 !!$  ENDIF
 
   !  Verify the name for new link, in increasing creation order
-  !  HDmemset(tmpname, 0, (size_t)NAME_BUF_SIZE);
+  !  memset(tmpname, 0, (size_t)NAME_BUF_SIZE);
 
   ! The actual size of tmpname should be 7
 
@@ -1590,10 +1485,6 @@ SUBROUTINE link_info_by_idx_check(group_id, linkname, n, &
 ! * Return:      Success:        0
 ! *              Failure:        number of errors
 ! *
-! * Programmer:  M.S. Breitenfeld
-! *              Modified C routine
-! *              March 12, 2008
-! *
 ! *-------------------------------------------------------------------------
 !
 
@@ -1611,8 +1502,8 @@ SUBROUTINE link_info_by_idx_check(group_id, linkname, n, &
   INTEGER(HID_T) :: type_id
   INTEGER(HID_T) :: lcpl_id
 
-  INTEGER :: cset ! Indicates the character set used for the link’s name.
-  INTEGER :: corder ! Specifies the link’s creation order position.
+  INTEGER :: cset ! Indicates the character set used for the link's name.
+  INTEGER :: corder ! Specifies the link's creation order position.
   LOGICAL :: f_corder_valid ! Indicates whether the value in corder is valid.
   INTEGER :: link_type ! Specifies the link class:
                        !  H5L_TYPE_HARD_F      - Hard link
@@ -1958,10 +1849,6 @@ END SUBROUTINE objcopy
 ! * Return:      Success:        0
 ! *
 ! *              Failure:        -1
-! *
-! * Programmer:  James Laird
-! *              Tuesday, June 6, 2006
-! *
 ! *-------------------------------------------------------------------------
 !
 

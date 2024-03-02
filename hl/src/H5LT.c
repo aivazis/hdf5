@@ -91,10 +91,6 @@ static herr_t udata_free(void *udata);
  * Return: Address of "allocated" buffer, if successful. Otherwise, it returns
  *         NULL.
  *
- * Programmer: Christian Chilan
- *
- * Date: October 3, 2011
- *
  *-------------------------------------------------------------------------
  */
 static void *
@@ -189,10 +185,6 @@ out:
  * Return: The address of the destination buffer, if successful. Otherwise, it
  *         returns NULL.
  *
- * Programmer: Christian Chilan
- *
- * Date: October 3, 2011
- *
  *-------------------------------------------------------------------------
  */
 static void *
@@ -271,10 +263,6 @@ out:
  * Return: Address of reallocated buffer, if successful. Otherwise, it returns
  *         NULL.
  *
- * Programmer: Christian Chilan
- *
- * Date: October 3, 2011
- *
  *-------------------------------------------------------------------------
  */
 static void *
@@ -298,14 +286,33 @@ image_realloc(void *ptr, size_t size, H5FD_file_image_op_t file_image_op, void *
         goto out;
 
     if (file_image_op == H5FD_FILE_IMAGE_OP_FILE_RESIZE) {
+        void *tmp_realloc;
+
         if (udata->vfd_image_ptr != ptr)
             goto out;
 
         if (udata->vfd_ref_count != 1)
             goto out;
 
-        if (NULL == (udata->vfd_image_ptr = HDrealloc(ptr, size)))
+        /* Make sure all the udata structure image pointers
+         * match each other before we update them
+         */
+        assert(udata->vfd_image_ptr == udata->app_image_ptr);
+        assert(udata->vfd_image_ptr == udata->fapl_image_ptr);
+
+        tmp_realloc = realloc(ptr, size);
+        if (tmp_realloc) {
+            udata->vfd_image_ptr  = tmp_realloc;
+            udata->app_image_ptr  = udata->vfd_image_ptr;
+            udata->fapl_image_ptr = udata->vfd_image_ptr;
+        }
+        else {
+            free(ptr);
+            udata->vfd_image_ptr  = NULL;
+            udata->app_image_ptr  = NULL;
+            udata->fapl_image_ptr = NULL;
             goto out;
+        }
 
         udata->vfd_image_size = size;
         return_value          = udata->vfd_image_ptr;
@@ -327,10 +334,6 @@ out:
  *          deallocated if there are no outstanding references.
  *
  * Return: SUCCEED or FAIL
- *
- * Programmer: Christian Chilan
- *
- * Date: October 3, 2011
  *
  *-------------------------------------------------------------------------
  */
@@ -356,7 +359,7 @@ image_free(void *ptr, H5FD_file_image_op_t file_image_op, void *_udata)
              * references */
             if (udata->fapl_ref_count == 0 && udata->vfd_ref_count == 0 &&
                 !(udata->flags & H5LT_FILE_IMAGE_DONT_RELEASE)) {
-                HDfree(udata->fapl_image_ptr);
+                free(udata->fapl_image_ptr);
                 udata->app_image_ptr  = NULL;
                 udata->fapl_image_ptr = NULL;
                 udata->vfd_image_ptr  = NULL;
@@ -375,11 +378,20 @@ image_free(void *ptr, H5FD_file_image_op_t file_image_op, void *_udata)
              * references */
             if (udata->fapl_ref_count == 0 && udata->vfd_ref_count == 0 &&
                 !(udata->flags & H5LT_FILE_IMAGE_DONT_RELEASE)) {
-                HDfree(udata->vfd_image_ptr);
+                /* Make sure we aren't going to leak memory elsewhere */
+                assert(udata->app_image_ptr == udata->vfd_image_ptr || udata->app_image_ptr == NULL);
+                assert(udata->fapl_image_ptr == udata->vfd_image_ptr || udata->fapl_image_ptr == NULL);
+
+                free(udata->vfd_image_ptr);
                 udata->app_image_ptr  = NULL;
                 udata->fapl_image_ptr = NULL;
                 udata->vfd_image_ptr  = NULL;
-            } /* end if */
+            }
+
+            /* release reference to udata structure */
+            if (udata_free(udata) < 0)
+                goto out;
+
             break;
 
         /* added unused labels to keep the compiler quite */
@@ -407,10 +419,6 @@ out:
  *
  * Return: Address of "newly allocated" structure, if successful. Otherwise, it
  *         returns NULL.
- *
- * Programmer: Christian Chilan
- *
- * Date: October 3, 2011
  *
  *-------------------------------------------------------------------------
  */
@@ -442,10 +450,6 @@ out:
  *
  * Return: SUCCEED or FAIL
  *
- * Programmer: Christian Chilan
- *
- * Date: October 3, 2011
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
@@ -461,9 +465,15 @@ udata_free(void *_udata)
 
     udata->ref_count--;
 
-    /* checks that there are no references outstanding before deallocating udata */
-    if (udata->ref_count == 0 && udata->fapl_ref_count == 0 && udata->vfd_ref_count == 0)
-        HDfree(udata);
+    if (udata->ref_count == 0) {
+        /* There should not be any outstanding references
+         * to the udata structure at this point.
+         */
+        assert(udata->fapl_ref_count == 0);
+        assert(udata->vfd_ref_count == 0);
+
+        free(udata);
+    }
 
     return (SUCCEED);
 
@@ -488,10 +498,6 @@ static herr_t H5LT_get_attribute_mem(hid_t loc_id, const char *obj_name, const c
  * Purpose: Creates and writes a dataset of a type tid
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Quincey Koziol
- *
- * Date: October 10, 2007
  *
  *-------------------------------------------------------------------------
  */
@@ -553,10 +559,6 @@ out:
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: March 19, 2001
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -576,10 +578,6 @@ H5LTmake_dataset(hid_t loc_id, const char *dset_name, int rank, const hsize_t *d
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: September 14, 2001
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -597,10 +595,6 @@ H5LTmake_dataset_char(hid_t loc_id, const char *dset_name, int rank, const hsize
  * Purpose: Creates and writes a dataset of H5T_NATIVE_SHORT type
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: September 14, 2001
  *
  * Comments:
  *
@@ -620,10 +614,6 @@ H5LTmake_dataset_short(hid_t loc_id, const char *dset_name, int rank, const hsiz
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: September 14, 2001
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -641,10 +631,6 @@ H5LTmake_dataset_int(hid_t loc_id, const char *dset_name, int rank, const hsize_
  * Purpose: Creates and writes a dataset of H5T_NATIVE_LONG type
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: September 14, 2001
  *
  * Comments:
  *
@@ -664,10 +650,6 @@ H5LTmake_dataset_long(hid_t loc_id, const char *dset_name, int rank, const hsize
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: September 14, 2001
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -685,10 +667,6 @@ H5LTmake_dataset_float(hid_t loc_id, const char *dset_name, int rank, const hsiz
  * Purpose: Creates and writes a dataset of H5T_NATIVE_DOUBLE type
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: September 14, 2001
  *
  * Comments:
  *
@@ -708,10 +686,6 @@ H5LTmake_dataset_double(hid_t loc_id, const char *dset_name, int rank, const hsi
  * Purpose: Creates and writes a dataset of H5T_C_S1 type
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: October 05, 2004
  *
  * Comments:
  *
@@ -734,7 +708,7 @@ H5LTmake_dataset_string(hid_t loc_id, const char *dset_name, const char *buf)
     if ((tid = H5Tcopy(H5T_C_S1)) < 0)
         goto out;
 
-    size = HDstrlen(buf) + 1; /* extra null term */
+    size = strlen(buf) + 1; /* extra null term */
 
     if (H5Tset_size(tid, size) < 0)
         goto out;
@@ -783,22 +757,18 @@ out:
  *
  * Return: File identifier, Failure: -1
  *
- * Programmer: Christian Chilan
- *
- * Date: October 3, 2011
- *
  *-------------------------------------------------------------------------
  */
 hid_t
 H5LTopen_file_image(void *buf_ptr, size_t buf_size, unsigned flags)
 {
-    hid_t    fapl = -1, file_id = -1; /* HDF5 identifiers */
-    unsigned file_open_flags;         /* Flags for image open */
-    char     file_name[64];           /* Filename buffer */
-    size_t   alloc_incr;              /* Buffer allocation increment */
-    size_t   min_incr  = 65536;       /* Minimum buffer increment */
-    double   buf_prcnt = 0.1;         /* Percentage of buffer size to set
-                                          as increment */
+    H5LT_file_image_ud_t       *udata = NULL;            /* Pointer to udata structure */
+    hid_t                       fapl = -1, file_id = -1; /* HDF5 identifiers */
+    unsigned                    file_open_flags;         /* Flags for image open */
+    char                        file_name[64];           /* Filename buffer */
+    size_t                      alloc_incr;              /* Buffer allocation increment */
+    size_t                      min_incr  = 65536;       /* Minimum buffer increment */
+    double                      buf_prcnt = 0.1;         /* Percentage of buffer size to set as increment */
     static long                 file_name_counter;
     H5FD_file_image_callbacks_t callbacks = {&image_malloc, &image_memcpy, &image_realloc, &image_free,
                                              &udata_copy,   &udata_free,   (void *)NULL};
@@ -824,18 +794,16 @@ H5LTopen_file_image(void *buf_ptr, size_t buf_size, unsigned flags)
         alloc_incr = min_incr;
 
     /* Configure FAPL to use the core file driver */
-    if (H5Pset_fapl_core(fapl, alloc_incr, FALSE) < 0)
+    if (H5Pset_fapl_core(fapl, alloc_incr, false) < 0)
         goto out;
 
     /* Set callbacks for file image ops ONLY if the file image is NOT copied */
     if (flags & H5LT_FILE_IMAGE_DONT_COPY) {
-        H5LT_file_image_ud_t *udata; /* Pointer to udata structure */
-
         /* Allocate buffer to communicate user data to callbacks */
-        if (NULL == (udata = (H5LT_file_image_ud_t *)HDmalloc(sizeof(H5LT_file_image_ud_t))))
+        if (NULL == (udata = (H5LT_file_image_ud_t *)malloc(sizeof(H5LT_file_image_ud_t))))
             goto out;
 
-        /* Initialize udata with info about app buffer containing file image  and flags */
+        /* Initialize udata with info about app buffer containing file image and flags */
         udata->app_image_ptr   = buf_ptr;
         udata->app_image_size  = buf_size;
         udata->fapl_image_ptr  = NULL;
@@ -845,17 +813,32 @@ H5LTopen_file_image(void *buf_ptr, size_t buf_size, unsigned flags)
         udata->vfd_image_size  = 0;
         udata->vfd_ref_count   = 0;
         udata->flags           = flags;
-        udata->ref_count       = 1; /* corresponding to the first FAPL */
+
+        /*
+         * Initialize the udata structure with a reference count of 1. At
+         * first, nothing holds this reference to the udata structure. The
+         * call to H5Pset_file_image_callbacks below will associate the
+         * udata structure with the FAPL, incrementing the structure's
+         * reference count and causing the FAPL to hold one of the two
+         * references to the structure in preparation for transfer of
+         * ownership to the file driver. Once the file has been opened with
+         * this FAPL and the FAPL is closed, the reference held by the FAPL
+         * is released and ownership is transferred to the file driver, which
+         * will then hold the remaining reference to the udata structure.
+         * The udata structure will then be freed when the file driver calls
+         * the image_free callback and releases its reference to the structure.
+         */
+        udata->ref_count = 1;
 
         /* copy address of udata into callbacks */
         callbacks.udata = (void *)udata;
 
         /* Set file image callbacks */
         if (H5Pset_file_image_callbacks(fapl, &callbacks) < 0) {
-            HDfree(udata);
+            udata_free(udata);
             goto out;
-        } /* end if */
-    }     /* end if */
+        }
+    } /* end if */
 
     /* Assign file image in user buffer to FAPL */
     if (H5Pset_file_image(fapl, buf_ptr, buf_size) < 0)
@@ -868,7 +851,7 @@ H5LTopen_file_image(void *buf_ptr, size_t buf_size, unsigned flags)
         file_open_flags = H5F_ACC_RDONLY;
 
     /* define a unique file name */
-    HDsnprintf(file_name, (sizeof(file_name) - 1), "file_image_%ld", file_name_counter++);
+    snprintf(file_name, (sizeof(file_name) - 1), "file_image_%ld", file_name_counter++);
 
     /* Assign file image in FAPL to the core file driver */
     if ((file_id = H5Fopen(file_name, file_open_flags, fapl)) < 0)
@@ -885,8 +868,10 @@ out:
     H5E_BEGIN_TRY
     {
         H5Pclose(fapl);
+        H5Fclose(file_id);
     }
     H5E_END_TRY
+
     return -1;
 } /* end H5LTopen_file_image() */
 
@@ -896,10 +881,6 @@ out:
  * Purpose: Reads a dataset from disk.
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Quincey Koziol
- *
- * Date: October 8, 2007
  *
  *-------------------------------------------------------------------------
  */
@@ -939,10 +920,6 @@ out:
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: June 13, 2001
- *
  *-------------------------------------------------------------------------
  */
 
@@ -958,10 +935,6 @@ H5LTread_dataset(hid_t loc_id, const char *dset_name, hid_t tid, void *data)
  * Purpose: Reads a dataset from disk.
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: November 5, 2001
  *
  *-------------------------------------------------------------------------
  */
@@ -979,10 +952,6 @@ H5LTread_dataset_char(hid_t loc_id, const char *dset_name, char *data)
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: November 5, 2001
- *
  *-------------------------------------------------------------------------
  */
 
@@ -998,10 +967,6 @@ H5LTread_dataset_short(hid_t loc_id, const char *dset_name, short *data)
  * Purpose: Reads a dataset from disk.
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: November 5, 2001
  *
  *-------------------------------------------------------------------------
  */
@@ -1019,10 +984,6 @@ H5LTread_dataset_int(hid_t loc_id, const char *dset_name, int *data)
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: November 5, 2001
- *
  *-------------------------------------------------------------------------
  */
 
@@ -1038,10 +999,6 @@ H5LTread_dataset_long(hid_t loc_id, const char *dset_name, long *data)
  * Purpose: Reads a dataset from disk.
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: November 5, 2001
  *
  *-------------------------------------------------------------------------
  */
@@ -1059,10 +1016,6 @@ H5LTread_dataset_float(hid_t loc_id, const char *dset_name, float *data)
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: November 5, 2001
- *
  *-------------------------------------------------------------------------
  */
 
@@ -1078,10 +1031,6 @@ H5LTread_dataset_double(hid_t loc_id, const char *dset_name, double *data)
  * Purpose: Reads a dataset
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: October 05, 2004
  *
  *-------------------------------------------------------------------------
  */
@@ -1132,10 +1081,6 @@ out:
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: September 4, 2001
- *
  *-------------------------------------------------------------------------
  */
 
@@ -1182,17 +1127,11 @@ out:
 }
 
 /*-------------------------------------------------------------------------
- * Function: H5LTget_dataset_info
+ * Function:    H5LTget_dataset_info
  *
- * Purpose: Gets information about a dataset.
+ * Purpose:     Gets information about a dataset.
  *
- * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: September 4, 2001
- *  Modified: February 28, 2006: checked for NULL parameters
- *
+ * Return:      Success: 0, Failure: -1
  *-------------------------------------------------------------------------
  */
 
@@ -1263,10 +1202,6 @@ out:
  *
  * Purpose: operator function used by H5LTfind_dataset
  *
- * Programmer: Pedro Vicente
- *
- * Date: June 21, 2001
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -1293,7 +1228,7 @@ find_dataset(H5_ATTR_UNUSED hid_t loc_id, const char *name, H5_ATTR_UNUSED const
      * cause the iterator to immediately return that positive value,
      * indicating short-circuit success
      */
-    if (HDstrncmp(name, (char *)op_data, HDstrlen((char *)op_data)) == 0)
+    if (strncmp(name, (char *)op_data, strlen((char *)op_data)) == 0)
         ret = 1;
 
     return ret;
@@ -1304,10 +1239,6 @@ find_dataset(H5_ATTR_UNUSED hid_t loc_id, const char *name, H5_ATTR_UNUSED const
  *
  * Purpose:  Inquires if a dataset named dset_name exists attached
  *           to the object loc_id.
- *
- * Programmer: Pedro Vicente
- *
- * Date: July 15, 2001
  *
  * Return:
  *     Success: The return value of the first operator that
@@ -1348,10 +1279,6 @@ H5_GCC_CLANG_DIAG_ON("cast-qual")
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: July 23, 2001
- *
  * Comments: If the attribute already exists, it is overwritten
  *
  *-------------------------------------------------------------------------
@@ -1382,7 +1309,7 @@ H5LTset_attribute_string(hid_t loc_id, const char *obj_name, const char *attr_na
     if ((attr_type = H5Tcopy(H5T_C_S1)) < 0)
         goto out;
 
-    attr_size = HDstrlen(attr_data) + 1; /* extra null term */
+    attr_size = strlen(attr_data) + 1; /* extra null term */
 
     if (H5Tset_size(attr_type, (size_t)attr_size) < 0)
         goto out;
@@ -1435,10 +1362,6 @@ out:
  * Purpose: Private function used by H5LTset_attribute_int and H5LTset_attribute_float
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: July 25, 2001
  *
  * Comments:
  *
@@ -1509,10 +1432,6 @@ out:
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: November 7, 2001
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -1535,10 +1454,6 @@ H5LTset_attribute_char(hid_t loc_id, const char *obj_name, const char *attr_name
  * Purpose: Create and write an attribute.
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: March 8, 2004
  *
  * Comments:
  *
@@ -1563,10 +1478,6 @@ H5LTset_attribute_uchar(hid_t loc_id, const char *obj_name, const char *attr_nam
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: November 7, 2001
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -1589,10 +1500,6 @@ H5LTset_attribute_short(hid_t loc_id, const char *obj_name, const char *attr_nam
  * Purpose: Create and write an attribute.
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: March 8, 2004
  *
  * Comments:
  *
@@ -1617,10 +1524,6 @@ H5LTset_attribute_ushort(hid_t loc_id, const char *obj_name, const char *attr_na
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: November 7, 2001
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -1642,10 +1545,6 @@ H5LTset_attribute_int(hid_t loc_id, const char *obj_name, const char *attr_name,
  * Purpose: Create and write an attribute.
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: March 8, 2004
  *
  * Comments:
  *
@@ -1670,10 +1569,6 @@ H5LTset_attribute_uint(hid_t loc_id, const char *obj_name, const char *attr_name
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: November 7, 2001
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -1695,10 +1590,6 @@ H5LTset_attribute_long(hid_t loc_id, const char *obj_name, const char *attr_name
  * Purpose: Create and write an attribute.
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Elena Pourmal
- *
- * Date: June 17, 2005
  *
  * Comments: This function was added to support attributes of type long long
  *
@@ -1723,10 +1614,6 @@ H5LTset_attribute_long_long(hid_t loc_id, const char *obj_name, const char *attr
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: March 8, 2004
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -1750,10 +1637,6 @@ H5LTset_attribute_ulong(hid_t loc_id, const char *obj_name, const char *attr_nam
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Alessandro Felder
- *
- * Date: August 27, 2021
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -1775,10 +1658,6 @@ H5LTset_attribute_ullong(hid_t loc_id, const char *obj_name, const char *attr_na
  * Purpose: Create and write an attribute.
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: July 25, 2001
  *
  * Comments:
  *
@@ -1802,10 +1681,6 @@ H5LTset_attribute_float(hid_t loc_id, const char *obj_name, const char *attr_nam
  * Purpose: Create and write an attribute.
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: November 7, 2001
  *
  * Comments:
  *
@@ -1852,10 +1727,6 @@ H5LTfind_attribute(hid_t loc_id, const char *attr_name)
  * Purpose: Gets the dimensionality of an attribute.
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: September 4, 2001
  *
  *-------------------------------------------------------------------------
  */
@@ -1917,10 +1788,6 @@ out:
  * Purpose: Gets information about an attribute.
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: September 4, 2001
  *
  *-------------------------------------------------------------------------
  */
@@ -1999,10 +1866,6 @@ out:
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Raymond Lu
- *
- * Date: October 6, 2004
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -2020,19 +1883,19 @@ H5LTtext_to_dtype(const char *text, H5LT_lang_t lang_type)
         goto out;
 
     if (lang_type != H5LT_DDL) {
-        HDfprintf(stderr, "only DDL is supported for now.\n");
+        fprintf(stderr, "only DDL is supported for now.\n");
         goto out;
     }
 
-    input_len = HDstrlen(text);
-    myinput   = HDstrdup(text);
+    input_len = strlen(text);
+    myinput   = strdup(text);
 
     if ((type_id = H5LTyyparse()) < 0) {
-        HDfree(myinput);
+        free(myinput);
         goto out;
     }
 
-    HDfree(myinput);
+    free(myinput);
     input_len = 0;
 
     return type_id;
@@ -2048,14 +1911,10 @@ out:
  *
  * Return:      void
  *
- * Programmer:  Raymond Lu
- *
- * Date:        29 September 2011
- *
  *-------------------------------------------------------------------------
  */
 static char *
-realloc_and_append(hbool_t _no_user_buf, size_t *len, char *buf, const char *str_to_add)
+realloc_and_append(bool _no_user_buf, size_t *len, char *buf, const char *str_to_add)
 {
     size_t size_str_to_add, size_str;
 
@@ -2066,16 +1925,16 @@ realloc_and_append(hbool_t _no_user_buf, size_t *len, char *buf, const char *str
             goto out;
 
         /* If the buffer isn't big enough, reallocate it.  Otherwise, go to do strcat. */
-        if (str_to_add && ((ssize_t)(*len - (HDstrlen(buf) + HDstrlen(str_to_add) + 1)) < LIMIT)) {
-            *len += ((HDstrlen(buf) + HDstrlen(str_to_add) + 1) / INCREMENT + 1) * INCREMENT;
+        if (str_to_add && ((ssize_t)(*len - (strlen(buf) + strlen(str_to_add) + 1)) < LIMIT)) {
+            *len += ((strlen(buf) + strlen(str_to_add) + 1) / INCREMENT + 1) * INCREMENT;
         }
-        else if (!str_to_add && ((ssize_t)(*len - HDstrlen(buf) - 1) < LIMIT)) {
+        else if (!str_to_add && ((ssize_t)(*len - strlen(buf) - 1) < LIMIT)) {
             *len += INCREMENT;
         }
 
-        tmp_realloc = (char *)HDrealloc(buf, *len);
+        tmp_realloc = (char *)realloc(buf, *len);
         if (tmp_realloc == NULL) {
-            HDfree(buf);
+            free(buf);
             buf = NULL;
             goto out;
         }
@@ -2085,19 +1944,19 @@ realloc_and_append(hbool_t _no_user_buf, size_t *len, char *buf, const char *str
 
     if (str_to_add) {
         /* find the size of the buffer to add */
-        size_str_to_add = HDstrlen(str_to_add);
+        size_str_to_add = strlen(str_to_add);
         /* find the size of the current buffer */
-        size_str = HDstrlen(buf);
+        size_str = strlen(buf);
 
         /* Check to make sure the appended string does not
          * extend past the allocated buffer; if it does then truncate the string
          */
         if (size_str < *len - 1) {
             if (size_str + size_str_to_add < *len - 1) {
-                HDstrcat(buf, str_to_add);
+                strcat(buf, str_to_add);
             }
             else {
-                HDstrncat(buf, str_to_add, (*len - 1) - size_str);
+                strncat(buf, str_to_add, (*len - 1) - size_str);
             }
         }
         else {
@@ -2118,23 +1977,19 @@ out:
  *
  * Return:      void
  *
- * Programmer:  Raymond Lu
- *
- * Date:        December 6, 2005
- *
  *-------------------------------------------------------------------------
  */
 static char *
-indentation(size_t x, char *str, hbool_t no_u_buf, size_t *s_len)
+indentation(size_t x, char *str, bool no_u_buf, size_t *s_len)
 {
     char tmp_str[TMP_LEN];
 
     if (x < 80) {
-        HDmemset(tmp_str, ' ', x);
+        memset(tmp_str, ' ', x);
         tmp_str[x] = '\0';
     }
     else
-        HDsnprintf(tmp_str, TMP_LEN, "error: the indentation exceeds the number of cols.");
+        snprintf(tmp_str, TMP_LEN, "error: the indentation exceeds the number of cols.");
 
     if (!(str = realloc_and_append(no_u_buf, s_len, str, tmp_str)))
         goto out;
@@ -2152,11 +2007,9 @@ out:
  *
  * Return:      Success: 0, Failure: -1
  *
- * Programmer:  Raymond Lu
- *
  *-----------------------------------------------------------------------*/
 static char *
-print_enum(hid_t type, char *str, size_t *str_len, hbool_t no_ubuf, size_t indt)
+print_enum(hid_t type, char *str, size_t *str_len, bool no_ubuf, size_t indt)
 {
     char         **name  = NULL; /*member names                   */
     unsigned char *value = NULL; /*value array                    */
@@ -2190,8 +2043,8 @@ print_enum(hid_t type, char *str, size_t *str_len, hbool_t no_ubuf, size_t indt)
     dst_size   = H5Tget_size(native);
 
     /* Get the names and raw values of all members */
-    name  = (char **)HDcalloc((size_t)nmembs, sizeof(char *));
-    value = (unsigned char *)HDcalloc((size_t)nmembs, MAX(dst_size, super_size));
+    name  = (char **)calloc((size_t)nmembs, sizeof(char *));
+    value = (unsigned char *)calloc((size_t)nmembs, MAX(dst_size, super_size));
 
     for (i = 0; i < nmembs; i++) {
         if ((name[i] = H5Tget_member_name(type, (unsigned)i)) == NULL)
@@ -2215,22 +2068,22 @@ print_enum(hid_t type, char *str, size_t *str_len, hbool_t no_ubuf, size_t indt)
     for (i = 0; i < nmembs; i++) {
         if (!(str = indentation(indt + COL, str, no_ubuf, str_len)))
             goto out;
-        nchars = HDsnprintf(tmp_str, TMP_LEN, "\"%s\"", name[i]);
+        nchars = snprintf(tmp_str, TMP_LEN, "\"%s\"", name[i]);
         if (!(str = realloc_and_append(no_ubuf, str_len, str, tmp_str)))
             goto out;
-        HDmemset(tmp_str, ' ', (size_t)MAX(3, 19 - nchars) + 1);
+        memset(tmp_str, ' ', (size_t)MAX(3, 19 - nchars) + 1);
         tmp_str[MAX(3, 19 - nchars)] = '\0';
         if (!(str = realloc_and_append(no_ubuf, str_len, str, tmp_str)))
             goto out;
 
         if (H5T_SGN_NONE == H5Tget_sign(native))
-            HDsnprintf(tmp_str, TMP_LEN, "%u", *((unsigned int *)((void *)(value + (size_t)i * dst_size))));
+            snprintf(tmp_str, TMP_LEN, "%u", *((unsigned int *)((void *)(value + (size_t)i * dst_size))));
         else
-            HDsnprintf(tmp_str, TMP_LEN, "%d", *((int *)((void *)(value + (size_t)i * dst_size))));
+            snprintf(tmp_str, TMP_LEN, "%d", *((int *)((void *)(value + (size_t)i * dst_size))));
         if (!(str = realloc_and_append(no_ubuf, str_len, str, tmp_str)))
             goto out;
 
-        HDsnprintf(tmp_str, TMP_LEN, ";\n");
+        snprintf(tmp_str, TMP_LEN, ";\n");
         if (!(str = realloc_and_append(no_ubuf, str_len, str, tmp_str)))
             goto out;
     }
@@ -2239,8 +2092,8 @@ print_enum(hid_t type, char *str, size_t *str_len, hbool_t no_ubuf, size_t indt)
     for (i = 0; i < nmembs; i++)
         H5free_memory(name[i]);
 
-    HDfree(name);
-    HDfree(value);
+    free(name);
+    free(value);
     H5Tclose(super);
 
     return str;
@@ -2249,8 +2102,8 @@ out:
 
     if (0 == nmembs) {
         str = realloc_and_append(no_ubuf, str_len, str, "\n");
-        HDassert((indt + 4) < TMP_LEN);
-        HDmemset(tmp_str, ' ', (indt + 4) + 1);
+        assert((indt + 4) < TMP_LEN);
+        memset(tmp_str, ' ', (indt + 4) + 1);
         tmp_str[(indt + 4)] = '\0';
         str                 = realloc_and_append(no_ubuf, str_len, str, tmp_str);
         str                 = realloc_and_append(no_ubuf, str_len, str, " <empty>");
@@ -2260,12 +2113,12 @@ out:
     if (name) {
         for (i = 0; i < nmembs; i++)
             if (name[i])
-                HDfree(name[i]);
-        HDfree(name);
+                free(name[i]);
+        free(name);
     } /* end if */
 
     if (value)
-        HDfree(value);
+        free(value);
 
     if (super >= 0)
         H5Tclose(super);
@@ -2279,10 +2132,6 @@ out:
  * Purpose:     Convert HDF5 data type to DDL description.
  *
  * Return:      Success: 0, Failure: -1
- *
- * Programmer:  Raymond Lu
- *
- * Date:        December 6, 2005
  *
  * Comments:
  *
@@ -2299,13 +2148,13 @@ H5LTdtype_to_text(hid_t dtype, char *str, H5LT_lang_t lang_type, size_t *len)
         goto out;
 
     if (len && !str) {
-        text_str    = (char *)HDcalloc(str_len, sizeof(char));
+        text_str    = (char *)calloc(str_len, sizeof(char));
         text_str[0] = '\0';
         if (!(text_str = H5LT_dtype_to_text(dtype, text_str, lang_type, &str_len, 1)))
             goto out;
-        *len = HDstrlen(text_str) + 1;
+        *len = strlen(text_str) + 1;
         if (text_str)
-            HDfree(text_str);
+            free(text_str);
         text_str = NULL;
     }
     else if (len && str) {
@@ -2317,7 +2166,7 @@ H5LTdtype_to_text(hid_t dtype, char *str, H5LT_lang_t lang_type, size_t *len)
     return ret;
 
 out:
-    HDfree(text_str);
+    free(text_str);
 
     return FAIL;
 }
@@ -2329,16 +2178,12 @@ out:
  *
  * Return:      Success: 0, Failure: -1
  *
- * Programmer:  Raymond Lu
- *
- * Date:        December 20, 2005
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
  */
 char *
-H5LT_dtype_to_text(hid_t dtype, char *dt_str, H5LT_lang_t lang, size_t *slen, hbool_t no_user_buf)
+H5LT_dtype_to_text(hid_t dtype, char *dt_str, H5LT_lang_t lang, size_t *slen, bool no_user_buf)
 {
     H5T_class_t tcls;
     char        tmp_str[TMP_LEN];
@@ -2348,7 +2193,7 @@ H5LT_dtype_to_text(hid_t dtype, char *dt_str, H5LT_lang_t lang, size_t *slen, hb
         goto out;
 
     if (lang != H5LT_DDL) {
-        HDsnprintf(dt_str, *slen, "only DDL is supported for now");
+        snprintf(dt_str, *slen, "only DDL is supported for now");
         goto out;
     }
 
@@ -2359,112 +2204,112 @@ H5LT_dtype_to_text(hid_t dtype, char *dt_str, H5LT_lang_t lang, size_t *slen, hb
         case H5T_INTEGER:
         case H5T_BITFIELD:
             if (H5Tequal(dtype, H5T_STD_I8BE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_I8BE");
+                snprintf(dt_str, *slen, "H5T_STD_I8BE");
             }
             else if (H5Tequal(dtype, H5T_STD_I8LE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_I8LE");
+                snprintf(dt_str, *slen, "H5T_STD_I8LE");
             }
             else if (H5Tequal(dtype, H5T_STD_I16BE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_I16BE");
+                snprintf(dt_str, *slen, "H5T_STD_I16BE");
             }
             else if (H5Tequal(dtype, H5T_STD_I16LE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_I16LE");
+                snprintf(dt_str, *slen, "H5T_STD_I16LE");
             }
             else if (H5Tequal(dtype, H5T_STD_I32BE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_I32BE");
+                snprintf(dt_str, *slen, "H5T_STD_I32BE");
             }
             else if (H5Tequal(dtype, H5T_STD_I32LE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_I32LE");
+                snprintf(dt_str, *slen, "H5T_STD_I32LE");
             }
             else if (H5Tequal(dtype, H5T_STD_I64BE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_I64BE");
+                snprintf(dt_str, *slen, "H5T_STD_I64BE");
             }
             else if (H5Tequal(dtype, H5T_STD_I64LE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_I64LE");
+                snprintf(dt_str, *slen, "H5T_STD_I64LE");
             }
             else if (H5Tequal(dtype, H5T_STD_U8BE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_U8BE");
+                snprintf(dt_str, *slen, "H5T_STD_U8BE");
             }
             else if (H5Tequal(dtype, H5T_STD_U8LE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_U8LE");
+                snprintf(dt_str, *slen, "H5T_STD_U8LE");
             }
             else if (H5Tequal(dtype, H5T_STD_U16BE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_U16BE");
+                snprintf(dt_str, *slen, "H5T_STD_U16BE");
             }
             else if (H5Tequal(dtype, H5T_STD_U16LE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_U16LE");
+                snprintf(dt_str, *slen, "H5T_STD_U16LE");
             }
             else if (H5Tequal(dtype, H5T_STD_U32BE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_U32BE");
+                snprintf(dt_str, *slen, "H5T_STD_U32BE");
             }
             else if (H5Tequal(dtype, H5T_STD_U32LE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_U32LE");
+                snprintf(dt_str, *slen, "H5T_STD_U32LE");
             }
             else if (H5Tequal(dtype, H5T_STD_U64BE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_U64BE");
+                snprintf(dt_str, *slen, "H5T_STD_U64BE");
             }
             else if (H5Tequal(dtype, H5T_STD_U64LE)) {
-                HDsnprintf(dt_str, *slen, "H5T_STD_U64LE");
+                snprintf(dt_str, *slen, "H5T_STD_U64LE");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_SCHAR)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_SCHAR");
+                snprintf(dt_str, *slen, "H5T_NATIVE_SCHAR");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_UCHAR)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_UCHAR");
+                snprintf(dt_str, *slen, "H5T_NATIVE_UCHAR");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_SHORT)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_SHORT");
+                snprintf(dt_str, *slen, "H5T_NATIVE_SHORT");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_USHORT)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_USHORT");
+                snprintf(dt_str, *slen, "H5T_NATIVE_USHORT");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_INT)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_INT");
+                snprintf(dt_str, *slen, "H5T_NATIVE_INT");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_UINT)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_UINT");
+                snprintf(dt_str, *slen, "H5T_NATIVE_UINT");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_LONG)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_LONG");
+                snprintf(dt_str, *slen, "H5T_NATIVE_LONG");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_ULONG)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_ULONG");
+                snprintf(dt_str, *slen, "H5T_NATIVE_ULONG");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_LLONG)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_LLONG");
+                snprintf(dt_str, *slen, "H5T_NATIVE_LLONG");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_ULLONG)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_ULLONG");
+                snprintf(dt_str, *slen, "H5T_NATIVE_ULLONG");
             }
             else {
-                HDsnprintf(dt_str, *slen, "undefined integer");
+                snprintf(dt_str, *slen, "undefined integer");
             }
 
             break;
         case H5T_FLOAT:
             if (H5Tequal(dtype, H5T_IEEE_F32BE)) {
-                HDsnprintf(dt_str, *slen, "H5T_IEEE_F32BE");
+                snprintf(dt_str, *slen, "H5T_IEEE_F32BE");
             }
             else if (H5Tequal(dtype, H5T_IEEE_F32LE)) {
-                HDsnprintf(dt_str, *slen, "H5T_IEEE_F32LE");
+                snprintf(dt_str, *slen, "H5T_IEEE_F32LE");
             }
             else if (H5Tequal(dtype, H5T_IEEE_F64BE)) {
-                HDsnprintf(dt_str, *slen, "H5T_IEEE_F64BE");
+                snprintf(dt_str, *slen, "H5T_IEEE_F64BE");
             }
             else if (H5Tequal(dtype, H5T_IEEE_F64LE)) {
-                HDsnprintf(dt_str, *slen, "H5T_IEEE_F64LE");
+                snprintf(dt_str, *slen, "H5T_IEEE_F64LE");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_FLOAT)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_FLOAT");
+                snprintf(dt_str, *slen, "H5T_NATIVE_FLOAT");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_DOUBLE)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_DOUBLE");
+                snprintf(dt_str, *slen, "H5T_NATIVE_DOUBLE");
             }
             else if (H5Tequal(dtype, H5T_NATIVE_LDOUBLE)) {
-                HDsnprintf(dt_str, *slen, "H5T_NATIVE_LDOUBLE");
+                snprintf(dt_str, *slen, "H5T_NATIVE_LDOUBLE");
             }
             else {
-                HDsnprintf(dt_str, *slen, "undefined float");
+                snprintf(dt_str, *slen, "undefined float");
             }
 
             break;
@@ -2492,16 +2337,16 @@ H5LT_dtype_to_text(hid_t dtype, char *dt_str, H5LT_lang_t lang, size_t *slen, hb
                 goto out;
 
             /* Print lead-in */
-            HDsnprintf(dt_str, *slen, "H5T_STRING {\n");
+            snprintf(dt_str, *slen, "H5T_STRING {\n");
             indent += COL;
 
             if (!(dt_str = indentation(indent + COL, dt_str, no_user_buf, slen)))
                 goto out;
 
             if (is_vlstr)
-                HDsnprintf(tmp_str, TMP_LEN, "STRSIZE H5T_VARIABLE;\n");
+                snprintf(tmp_str, TMP_LEN, "STRSIZE H5T_VARIABLE;\n");
             else
-                HDsnprintf(tmp_str, TMP_LEN, "STRSIZE %d;\n", (int)size);
+                snprintf(tmp_str, TMP_LEN, "STRSIZE %d;\n", (int)size);
 
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
@@ -2510,13 +2355,13 @@ H5LT_dtype_to_text(hid_t dtype, char *dt_str, H5LT_lang_t lang, size_t *slen, hb
                 goto out;
 
             if (str_pad == H5T_STR_NULLTERM)
-                HDsnprintf(tmp_str, TMP_LEN, "STRPAD H5T_STR_NULLTERM;\n");
+                snprintf(tmp_str, TMP_LEN, "STRPAD H5T_STR_NULLTERM;\n");
             else if (str_pad == H5T_STR_NULLPAD)
-                HDsnprintf(tmp_str, TMP_LEN, "STRPAD H5T_STR_NULLPAD;\n");
+                snprintf(tmp_str, TMP_LEN, "STRPAD H5T_STR_NULLPAD;\n");
             else if (str_pad == H5T_STR_SPACEPAD)
-                HDsnprintf(tmp_str, TMP_LEN, "STRPAD H5T_STR_SPACEPAD;\n");
+                snprintf(tmp_str, TMP_LEN, "STRPAD H5T_STR_SPACEPAD;\n");
             else
-                HDsnprintf(tmp_str, TMP_LEN, "STRPAD H5T_STR_ERROR;\n");
+                snprintf(tmp_str, TMP_LEN, "STRPAD H5T_STR_ERROR;\n");
 
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
@@ -2525,11 +2370,11 @@ H5LT_dtype_to_text(hid_t dtype, char *dt_str, H5LT_lang_t lang, size_t *slen, hb
                 goto out;
 
             if (cset == H5T_CSET_ASCII)
-                HDsnprintf(tmp_str, TMP_LEN, "CSET H5T_CSET_ASCII;\n");
+                snprintf(tmp_str, TMP_LEN, "CSET H5T_CSET_ASCII;\n");
             else if (cset == H5T_CSET_UTF8)
-                HDsnprintf(tmp_str, TMP_LEN, "CSET H5T_CSET_UTF8;\n");
+                snprintf(tmp_str, TMP_LEN, "CSET H5T_CSET_UTF8;\n");
             else
-                HDsnprintf(tmp_str, TMP_LEN, "CSET unknown;\n");
+                snprintf(tmp_str, TMP_LEN, "CSET unknown;\n");
 
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
@@ -2555,7 +2400,7 @@ H5LT_dtype_to_text(hid_t dtype, char *dt_str, H5LT_lang_t lang, size_t *slen, hb
 
             /* Check C variable-length string first. Are the two types equal? */
             if (H5Tequal(tmp_type, str_type)) {
-                HDsnprintf(tmp_str, TMP_LEN, "CTYPE H5T_C_S1;\n");
+                snprintf(tmp_str, TMP_LEN, "CTYPE H5T_C_S1;\n");
                 if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                     goto out;
                 goto next;
@@ -2574,7 +2419,7 @@ H5LT_dtype_to_text(hid_t dtype, char *dt_str, H5LT_lang_t lang, size_t *slen, hb
             }
 
             if (H5Tequal(tmp_type, str_type)) {
-                HDsnprintf(tmp_str, TMP_LEN, "CTYPE H5T_C_S1;\n");
+                snprintf(tmp_str, TMP_LEN, "CTYPE H5T_C_S1;\n");
                 if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                     goto out;
                 goto next;
@@ -2596,7 +2441,7 @@ H5LT_dtype_to_text(hid_t dtype, char *dt_str, H5LT_lang_t lang, size_t *slen, hb
 
             /* Are the two types equal? */
             if (H5Tequal(tmp_type, str_type)) {
-                HDsnprintf(tmp_str, TMP_LEN, "CTYPE H5T_FORTRAN_S1;\n");
+                snprintf(tmp_str, TMP_LEN, "CTYPE H5T_FORTRAN_S1;\n");
                 if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                     goto out;
                 goto next;
@@ -2616,14 +2461,14 @@ H5LT_dtype_to_text(hid_t dtype, char *dt_str, H5LT_lang_t lang, size_t *slen, hb
 
             /* Are the two types equal? */
             if (H5Tequal(tmp_type, str_type)) {
-                HDsnprintf(tmp_str, TMP_LEN, "CTYPE H5T_FORTRAN_S1;\n");
+                snprintf(tmp_str, TMP_LEN, "CTYPE H5T_FORTRAN_S1;\n");
                 if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                     goto out;
                 goto next;
             }
 
             /* Type doesn't match any of above. */
-            HDsnprintf(tmp_str, TMP_LEN, "CTYPE unknown_one_character_type;\n");
+            snprintf(tmp_str, TMP_LEN, "CTYPE unknown_one_character_type;\n");
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
 
@@ -2635,7 +2480,7 @@ next:
             indent -= COL;
             if (!(dt_str = indentation(indent + COL, dt_str, no_user_buf, slen)))
                 goto out;
-            HDsnprintf(tmp_str, TMP_LEN, "}");
+            snprintf(tmp_str, TMP_LEN, "}");
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
 
@@ -2645,12 +2490,12 @@ next:
             char *tag = NULL;
 
             /* Print lead-in */
-            HDsnprintf(dt_str, *slen, "H5T_OPAQUE {\n");
+            snprintf(dt_str, *slen, "H5T_OPAQUE {\n");
             indent += COL;
 
             if (!(dt_str = indentation(indent + COL, dt_str, no_user_buf, slen)))
                 goto out;
-            HDsnprintf(tmp_str, TMP_LEN, "OPQ_SIZE %lu;\n", (unsigned long)H5Tget_size(dtype));
+            snprintf(tmp_str, TMP_LEN, "OPQ_SIZE %lu;\n", (unsigned long)H5Tget_size(dtype));
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
 
@@ -2658,13 +2503,13 @@ next:
                 goto out;
             tag = H5Tget_tag(dtype);
             if (tag) {
-                HDsnprintf(tmp_str, TMP_LEN, "OPQ_TAG \"%s\";\n", tag);
+                snprintf(tmp_str, TMP_LEN, "OPQ_TAG \"%s\";\n", tag);
                 if (tag)
                     H5free_memory(tag);
                 tag = NULL;
             }
             else
-                HDsnprintf(tmp_str, TMP_LEN, "OPQ_TAG \"\";\n");
+                snprintf(tmp_str, TMP_LEN, "OPQ_TAG \"\";\n");
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
 
@@ -2672,7 +2517,7 @@ next:
             indent -= COL;
             if (!(dt_str = indentation(indent + COL, dt_str, no_user_buf, slen)))
                 goto out;
-            HDsnprintf(tmp_str, TMP_LEN, "}");
+            snprintf(tmp_str, TMP_LEN, "}");
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
 
@@ -2684,7 +2529,7 @@ next:
             char  *stmp = NULL;
 
             /* Print lead-in */
-            HDsnprintf(dt_str, *slen, "H5T_ENUM {\n");
+            snprintf(dt_str, *slen, "H5T_ENUM {\n");
             indent += COL;
             if (!(dt_str = indentation(indent + COL, dt_str, no_user_buf, slen)))
                 goto out;
@@ -2693,21 +2538,21 @@ next:
                 goto out;
             if (H5LTdtype_to_text(super, NULL, lang, &super_len) < 0)
                 goto out;
-            stmp = (char *)HDcalloc(super_len, sizeof(char));
+            stmp = (char *)calloc(super_len, sizeof(char));
             if (H5LTdtype_to_text(super, stmp, lang, &super_len) < 0) {
-                HDfree(stmp);
+                free(stmp);
                 goto out;
             }
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, stmp))) {
-                HDfree(stmp);
+                free(stmp);
                 goto out;
             }
 
             if (stmp)
-                HDfree(stmp);
+                free(stmp);
             stmp = NULL;
 
-            HDsnprintf(tmp_str, TMP_LEN, ";\n");
+            snprintf(tmp_str, TMP_LEN, ";\n");
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
             H5Tclose(super);
@@ -2719,7 +2564,7 @@ next:
             indent -= COL;
             if (!(dt_str = indentation(indent + COL, dt_str, no_user_buf, slen)))
                 goto out;
-            HDsnprintf(tmp_str, TMP_LEN, "}");
+            snprintf(tmp_str, TMP_LEN, "}");
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
 
@@ -2731,7 +2576,7 @@ next:
             char  *stmp = NULL;
 
             /* Print lead-in */
-            HDsnprintf(dt_str, *slen, "H5T_VLEN {\n");
+            snprintf(dt_str, *slen, "H5T_VLEN {\n");
             indent += COL;
             if (!(dt_str = indentation(indent + COL, dt_str, no_user_buf, slen)))
                 goto out;
@@ -2740,20 +2585,20 @@ next:
                 goto out;
             if (H5LTdtype_to_text(super, NULL, lang, &super_len) < 0)
                 goto out;
-            stmp = (char *)HDcalloc(super_len, sizeof(char));
+            stmp = (char *)calloc(super_len, sizeof(char));
             if (H5LTdtype_to_text(super, stmp, lang, &super_len) < 0) {
-                HDfree(stmp);
+                free(stmp);
                 goto out;
             }
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, stmp))) {
-                HDfree(stmp);
+                free(stmp);
                 goto out;
             }
 
             if (stmp)
-                HDfree(stmp);
+                free(stmp);
             stmp = NULL;
-            HDsnprintf(tmp_str, TMP_LEN, "\n");
+            snprintf(tmp_str, TMP_LEN, "\n");
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
             H5Tclose(super);
@@ -2762,7 +2607,7 @@ next:
             indent -= COL;
             if (!(dt_str = indentation(indent + COL, dt_str, no_user_buf, slen)))
                 goto out;
-            HDsnprintf(tmp_str, TMP_LEN, "}");
+            snprintf(tmp_str, TMP_LEN, "}");
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
 
@@ -2776,7 +2621,7 @@ next:
             int     ndims;
 
             /* Print lead-in */
-            HDsnprintf(dt_str, *slen, "H5T_ARRAY {\n");
+            snprintf(dt_str, *slen, "H5T_ARRAY {\n");
             indent += COL;
             if (!(dt_str = indentation(indent + COL, dt_str, no_user_buf, slen)))
                 goto out;
@@ -2789,11 +2634,11 @@ next:
 
             /* Print array dimensions */
             for (i = 0; i < ndims; i++) {
-                HDsnprintf(tmp_str, TMP_LEN, "[%d]", (int)dims[i]);
+                snprintf(tmp_str, TMP_LEN, "[%d]", (int)dims[i]);
                 if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                     goto out;
             }
-            HDsnprintf(tmp_str, TMP_LEN, " ");
+            snprintf(tmp_str, TMP_LEN, " ");
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
 
@@ -2801,19 +2646,19 @@ next:
                 goto out;
             if (H5LTdtype_to_text(super, NULL, lang, &super_len) < 0)
                 goto out;
-            stmp = (char *)HDcalloc(super_len, sizeof(char));
+            stmp = (char *)calloc(super_len, sizeof(char));
             if (H5LTdtype_to_text(super, stmp, lang, &super_len) < 0) {
-                HDfree(stmp);
+                free(stmp);
                 goto out;
             }
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, stmp))) {
-                HDfree(stmp);
+                free(stmp);
                 goto out;
             }
             if (stmp)
-                HDfree(stmp);
+                free(stmp);
             stmp = NULL;
-            HDsnprintf(tmp_str, TMP_LEN, "\n");
+            snprintf(tmp_str, TMP_LEN, "\n");
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
             H5Tclose(super);
@@ -2822,7 +2667,7 @@ next:
             indent -= COL;
             if (!(dt_str = indentation(indent + COL, dt_str, no_user_buf, slen)))
                 goto out;
-            HDsnprintf(tmp_str, TMP_LEN, "}");
+            snprintf(tmp_str, TMP_LEN, "}");
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
 
@@ -2840,7 +2685,7 @@ next:
             if ((nmembs = H5Tget_nmembers(dtype)) < 0)
                 goto out;
 
-            HDsnprintf(dt_str, *slen, "H5T_COMPOUND {\n");
+            snprintf(dt_str, *slen, "H5T_COMPOUND {\n");
             indent += COL;
 
             for (i = 0; i < nmembs; i++) {
@@ -2859,30 +2704,30 @@ next:
 
                 if (H5LTdtype_to_text(mtype, NULL, lang, &mlen) < 0)
                     goto out;
-                mtmp = (char *)HDcalloc(mlen, sizeof(char));
+                mtmp = (char *)calloc(mlen, sizeof(char));
                 if (H5LTdtype_to_text(mtype, mtmp, lang, &mlen) < 0) {
-                    HDfree(mtmp);
+                    free(mtmp);
                     goto out;
                 }
                 if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, mtmp))) {
-                    HDfree(mtmp);
+                    free(mtmp);
                     goto out;
                 }
                 if (mtmp)
-                    HDfree(mtmp);
+                    free(mtmp);
                 mtmp = NULL;
 
                 if (H5T_COMPOUND == mclass)
                     indent -= COL;
 
-                HDsnprintf(tmp_str, TMP_LEN, " \"%s\"", mname);
+                snprintf(tmp_str, TMP_LEN, " \"%s\"", mname);
                 if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                     goto out;
                 if (mname)
                     H5free_memory(mname);
                 mname = NULL;
 
-                HDsnprintf(tmp_str, TMP_LEN, " : %lu;\n", (unsigned long)moffset);
+                snprintf(tmp_str, TMP_LEN, " : %lu;\n", (unsigned long)moffset);
                 if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                     goto out;
             }
@@ -2891,30 +2736,30 @@ next:
             indent -= COL;
             if (!(dt_str = indentation(indent + COL, dt_str, no_user_buf, slen)))
                 goto out;
-            HDsnprintf(tmp_str, TMP_LEN, "}");
+            snprintf(tmp_str, TMP_LEN, "}");
             if (!(dt_str = realloc_and_append(no_user_buf, slen, dt_str, tmp_str)))
                 goto out;
 
             break;
         }
         case H5T_TIME:
-            HDsnprintf(dt_str, *slen, "H5T_TIME: not yet implemented");
+            snprintf(dt_str, *slen, "H5T_TIME: not yet implemented");
             break;
         case H5T_NO_CLASS:
-            HDsnprintf(dt_str, *slen, "H5T_NO_CLASS");
+            snprintf(dt_str, *slen, "H5T_NO_CLASS");
             break;
         case H5T_REFERENCE:
-            if (H5Tequal(dtype, H5T_STD_REF_DSETREG) == TRUE) {
-                HDsnprintf(dt_str, *slen, " H5T_REFERENCE { H5T_STD_REF_DSETREG }");
+            if (H5Tequal(dtype, H5T_STD_REF_DSETREG) == true) {
+                snprintf(dt_str, *slen, " H5T_REFERENCE { H5T_STD_REF_DSETREG }");
             }
             else {
-                HDsnprintf(dt_str, *slen, " H5T_REFERENCE { H5T_STD_REF_OBJECT }");
+                snprintf(dt_str, *slen, " H5T_REFERENCE { H5T_STD_REF_OBJECT }");
             }
             break;
         case H5T_NCLASSES:
             break;
         default:
-            HDsnprintf(dt_str, *slen, "unknown data type");
+            snprintf(dt_str, *slen, "unknown data type");
     }
 
     return dt_str;
@@ -2936,10 +2781,6 @@ out:
  * Purpose: Reads an attribute named attr_name
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: September 19, 2002
  *
  * Comments:
  *
@@ -2982,10 +2823,6 @@ H5LTget_attribute_string(hid_t loc_id, const char *obj_name, const char *attr_na
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: September 19, 2002
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -3006,10 +2843,6 @@ H5LTget_attribute_char(hid_t loc_id, const char *obj_name, const char *attr_name
  * Purpose: Reads an attribute named attr_name
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: March 8, 2004
  *
  * Comments:
  *
@@ -3032,10 +2865,6 @@ H5LTget_attribute_uchar(hid_t loc_id, const char *obj_name, const char *attr_nam
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: September 19, 2002
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -3056,10 +2885,6 @@ H5LTget_attribute_short(hid_t loc_id, const char *obj_name, const char *attr_nam
  * Purpose: Reads an attribute named attr_name
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: March 8, 2004
  *
  * Comments:
  *
@@ -3082,10 +2907,6 @@ H5LTget_attribute_ushort(hid_t loc_id, const char *obj_name, const char *attr_na
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: September 19, 2002
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -3106,10 +2927,6 @@ H5LTget_attribute_int(hid_t loc_id, const char *obj_name, const char *attr_name,
  * Purpose: Reads an attribute named attr_name
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: March 8, 2004
  *
  * Comments:
  *
@@ -3132,10 +2949,6 @@ H5LTget_attribute_uint(hid_t loc_id, const char *obj_name, const char *attr_name
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: September 19, 2002
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -3156,10 +2969,6 @@ H5LTget_attribute_long(hid_t loc_id, const char *obj_name, const char *attr_name
  * Purpose: Reads an attribute named attr_name
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Elena Pourmal
- *
- * Date: June 17, 2005
  *
  * Comments: This function was added to support INTEGER*8 Fortran types
  *
@@ -3182,10 +2991,6 @@ H5LTget_attribute_long_long(hid_t loc_id, const char *obj_name, const char *attr
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: March 8, 2004
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -3207,10 +3012,6 @@ H5LTget_attribute_ulong(hid_t loc_id, const char *obj_name, const char *attr_nam
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Alessandro Felder
- *
- * Date: August 27, 2021
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -3231,10 +3032,6 @@ H5LTget_attribute_ullong(hid_t loc_id, const char *obj_name, const char *attr_na
  * Purpose: Reads an attribute named attr_name
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: September 19, 2002
  *
  * Comments:
  *
@@ -3258,10 +3055,6 @@ H5LTget_attribute_float(hid_t loc_id, const char *obj_name, const char *attr_nam
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: September 19, 2002
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -3283,10 +3076,6 @@ H5LTget_attribute_double(hid_t loc_id, const char *obj_name, const char *attr_na
  * Purpose: Reads an attribute named attr_name with the memory type mem_type_id
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: September 19, 2002
  *
  * Comments: Private function
  *
@@ -3314,10 +3103,6 @@ H5LTget_attribute(hid_t loc_id, const char *obj_name, const char *attr_name, hid
  * Purpose: Reads an attribute named attr_name with the memory type mem_type_id
  *
  * Return: Success: 0, Failure: -1
- *
- * Programmer: Pedro Vicente
- *
- * Date: September 19, 2002
  *
  * Comments: Private function
  *
@@ -3374,10 +3159,6 @@ out:
  *
  * Return: Success: 0, Failure: -1
  *
- * Programmer: Pedro Vicente
- *
- * Date: September 19, 2002
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -3420,10 +3201,6 @@ out:
  *
  * Return: FAIL on error, SUCCESS on success
  *
- * Programmer: Pedro Vicente
- *
- * Date: January 04, 2005
- *
  * Comments:
  *
  *-------------------------------------------------------------------------
@@ -3451,7 +3228,7 @@ H5LT_set_attribute_string(hid_t dset_id, const char *name, const char *buf)
     if ((tid = H5Tcopy(H5T_C_S1)) < 0)
         return FAIL;
 
-    size = HDstrlen(buf) + 1; /* extra null term */
+    size = strlen(buf) + 1; /* extra null term */
 
     if (H5Tset_size(tid, (size_t)size) < 0)
         goto out;
@@ -3507,7 +3284,7 @@ H5LTpath_valid(hid_t loc_id, const char *path, hbool_t check_object_valid)
     htri_t     ret_value;
 
     /* Initialize */
-    ret_value = FALSE;
+    ret_value = false;
 
     /* check the arguments */
     if (path == NULL) {
@@ -3522,24 +3299,24 @@ H5LTpath_valid(hid_t loc_id, const char *path, hbool_t check_object_valid)
     }
 
     /* Find the length of the path */
-    path_length = HDstrlen(path);
+    path_length = strlen(path);
 
     /* Check if the identifier is the object itself, i.e. path is '.' */
-    if (HDstrncmp(path, ".", path_length) == 0) {
+    if (strncmp(path, ".", path_length) == 0) {
         if (check_object_valid) {
             obj_exists = H5Oexists_by_name(loc_id, path, H5P_DEFAULT);
             ret_value  = obj_exists;
             goto done;
         }
         else {
-            ret_value = TRUE; /* Since the object is the identifier itself,
+            ret_value = true; /* Since the object is the identifier itself,
                                * we can only check if loc_id is a valid type */
             goto done;
         }
     }
 
     /* Duplicate the path to use */
-    if (NULL == (tmp_path = HDstrdup(path))) {
+    if (NULL == (tmp_path = strdup(path))) {
         ret_value = FAIL;
         goto done;
     }
@@ -3547,18 +3324,18 @@ H5LTpath_valid(hid_t loc_id, const char *path, hbool_t check_object_valid)
     curr_name = tmp_path;
 
     /* check if absolute pathname */
-    if (HDstrncmp(path, "/", 1) == 0)
+    if (strncmp(path, "/", 1) == 0)
         curr_name++;
 
     /* check if relative path name starts with "./" */
-    if (HDstrncmp(path, "./", 2) == 0)
+    if (strncmp(path, "./", 2) == 0)
         curr_name += 2;
 
-    while ((delimit = HDstrchr(curr_name, '/')) != NULL) {
+    while ((delimit = strchr(curr_name, '/')) != NULL) {
         /* Change the delimiter to terminate the string */
         *delimit = '\0';
 
-        obj_exists = FALSE;
+        obj_exists = false;
         if ((link_exists = H5Lexists(loc_id, tmp_path, H5P_DEFAULT)) < 0) {
             ret_value = FAIL;
             goto done;
@@ -3566,8 +3343,8 @@ H5LTpath_valid(hid_t loc_id, const char *path, hbool_t check_object_valid)
 
         /* If target link does not exist then no reason to
          *  continue checking the path */
-        if (link_exists != TRUE) {
-            ret_value = FALSE;
+        if (link_exists != true) {
+            ret_value = false;
             goto done;
         }
 
@@ -3577,7 +3354,7 @@ H5LTpath_valid(hid_t loc_id, const char *path, hbool_t check_object_valid)
             goto done;
         }
 
-        if (obj_exists != TRUE)
+        if (obj_exists != true)
             break;
 
         /* Change the delimiter back to '/' */
@@ -3596,8 +3373,8 @@ H5LTpath_valid(hid_t loc_id, const char *path, hbool_t check_object_valid)
     }
     else {
         ret_value = link_exists;
-        /* Determine if link resolves to an actual object for check_object_valid TRUE */
-        if (check_object_valid == TRUE && link_exists == TRUE) {
+        /* Determine if link resolves to an actual object for check_object_valid true */
+        if (check_object_valid == true && link_exists == true) {
             if ((obj_exists = H5Oexists_by_name(loc_id, tmp_path, H5P_DEFAULT)) < 0) {
                 ret_value = FAIL;
             }
@@ -3609,7 +3386,7 @@ H5LTpath_valid(hid_t loc_id, const char *path, hbool_t check_object_valid)
 
 done:
     if (tmp_path != NULL)
-        HDfree(tmp_path);
+        free(tmp_path);
 
     return ret_value;
 }

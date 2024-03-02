@@ -58,7 +58,7 @@ static herr_t H5C__prefetched_entry_get_final_load_size(const void *image_ptr, s
                                                         void *udata_ptr, size_t *actual_len_ptr);
 static htri_t H5C__prefetched_entry_verify_chksum(const void *image_ptr, size_t len, void *udata_ptr);
 static void  *H5C__prefetched_entry_deserialize(const void *image_ptr, size_t len, void *udata,
-                                                hbool_t *dirty_ptr);
+                                                bool *dirty_ptr);
 static herr_t H5C__prefetched_entry_image_len(const void *thing, size_t *image_len_ptr);
 static herr_t H5C__prefetched_entry_pre_serialize(H5F_t *f, void *thing, haddr_t addr, size_t len,
                                                   haddr_t *new_addr_ptr, size_t *new_len_ptr,
@@ -147,7 +147,7 @@ H5C__prefetched_entry_verify_chksum(const void H5_ATTR_UNUSED *image_ptr, size_t
 
 static void *
 H5C__prefetched_entry_deserialize(const void H5_ATTR_UNUSED *image_ptr, size_t H5_ATTR_UNUSED len,
-                                  void H5_ATTR_UNUSED *udata, hbool_t H5_ATTR_UNUSED *dirty_ptr)
+                                  void H5_ATTR_UNUSED *udata, bool H5_ATTR_UNUSED *dirty_ptr)
 {
     FUNC_ENTER_PACKAGE_NOERR /* Yes, even though this pushes an error on the stack */
 
@@ -202,9 +202,6 @@ H5C__prefetched_entry_serialize(const H5F_t H5_ATTR_UNUSED *f, void H5_ATTR_UNUS
  * Return:      Success:        SUCCEED
  *              Failure:        FAIL
  *
- * Programmer:  John Mainzer
- *              8/13/15
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
@@ -217,8 +214,8 @@ H5C__prefetched_entry_notify(H5C_notify_action_t action, void *_thing)
     FUNC_ENTER_PACKAGE
 
     /* Sanity checks */
-    HDassert(entry_ptr);
-    HDassert(entry_ptr->prefetched);
+    assert(entry_ptr);
+    assert(entry_ptr->prefetched);
 
     switch (action) {
         case H5C_NOTIFY_ACTION_AFTER_INSERT:
@@ -238,15 +235,15 @@ H5C__prefetched_entry_notify(H5C_notify_action_t action, void *_thing)
                 H5C_cache_entry_t *parent_ptr;
 
                 /* Sanity checks */
-                HDassert(entry_ptr->flush_dep_parent);
+                assert(entry_ptr->flush_dep_parent);
                 parent_ptr = entry_ptr->flush_dep_parent[u];
-                HDassert(parent_ptr);
-                HDassert(parent_ptr->flush_dep_nchildren > 0);
+                assert(parent_ptr);
+                assert(parent_ptr->flush_dep_nchildren > 0);
 
                 /* Destroy flush dependency with flush dependency parent */
                 if (H5C_destroy_flush_dependency(parent_ptr, entry_ptr) < 0)
                     HGOTO_ERROR(H5E_CACHE, H5E_CANTUNDEPEND, FAIL,
-                                "unable to destroy prefetched entry flush dependency")
+                                "unable to destroy prefetched entry flush dependency");
 
                 if (parent_ptr->prefetched) {
                     /* In prefetched entries, the fd_child_count field is
@@ -254,14 +251,14 @@ H5C__prefetched_entry_notify(H5C_notify_action_t action, void *_thing)
                      * field to reflect the destruction of the flush
                      * dependency relationship.
                      */
-                    HDassert(parent_ptr->fd_child_count > 0);
+                    assert(parent_ptr->fd_child_count > 0);
                     (parent_ptr->fd_child_count)--;
                 } /* end if */
             }     /* end for */
             break;
 
         default:
-            HGOTO_ERROR(H5E_ARGS, H5E_BADVALUE, FAIL, "unknown action from metadata cache")
+            HGOTO_ERROR(H5E_ARGS, H5E_BADVALUE, FAIL, "unknown action from metadata cache");
             break;
     } /* end switch */
 
@@ -279,9 +276,6 @@ done:
  * Return:      Success:        SUCCEED
  *              Failure:        FAIL
  *
- * Programmer:  John Mainzer
- *              8/13/15
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
@@ -293,19 +287,19 @@ H5C__prefetched_entry_free_icr(void *_thing)
     FUNC_ENTER_PACKAGE
 
     /* Sanity checks */
-    HDassert(entry_ptr);
-    HDassert(entry_ptr->prefetched);
+    assert(entry_ptr);
+    assert(entry_ptr->prefetched);
 
     /* Release array for flush dependency parent addresses */
     if (entry_ptr->fd_parent_addrs != NULL) {
-        HDassert(entry_ptr->fd_parent_count > 0);
+        assert(entry_ptr->fd_parent_count > 0);
         entry_ptr->fd_parent_addrs = (haddr_t *)H5MM_xfree((void *)entry_ptr->fd_parent_addrs);
     } /* end if */
     else
-        HDassert(entry_ptr->fd_parent_count == 0);
+        assert(entry_ptr->fd_parent_count == 0);
 
     if (entry_ptr->image_ptr != NULL)
-        HGOTO_ERROR(H5E_CACHE, H5E_SYSTEM, FAIL, "prefetched entry image buffer still attached?")
+        HGOTO_ERROR(H5E_CACHE, H5E_SYSTEM, FAIL, "prefetched entry image buffer still attached?");
 
     entry_ptr = H5FL_FREE(H5C_cache_entry_t, entry_ptr);
 

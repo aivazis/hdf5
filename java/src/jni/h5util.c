@@ -945,7 +945,7 @@ h5str_sprintf(JNIEnv *env, h5str_t *out_str, hid_t container, hid_t tid, void *i
             }
             else {
                 if (typeSize > 0) {
-                    if (NULL == (this_str = HDstrdup(tmp_str)))
+                    if (NULL == (this_str = strdup(tmp_str)))
                         H5_OUT_OF_MEMORY_ERROR(ENVONLY, "h5str_sprintf: failed to allocate string buffer");
                 }
             }
@@ -1192,7 +1192,8 @@ h5str_sprintf(JNIEnv *env, h5str_t *out_str, hid_t container, hid_t tid, void *i
                  * object.
                  */
 
-                if (NULL == (this_str = (char *)malloc(64)))
+                const size_t size = 64;
+                if (NULL == (this_str = (char *)malloc(size)))
                     H5_JNI_FATAL_ERROR(ENVONLY, "h5str_sprintf: failed to allocate string buffer");
 
                 if ((obj = H5Rdereference2(container, H5P_DEFAULT, H5R_OBJECT, cptr)) < 0)
@@ -1206,25 +1207,25 @@ h5str_sprintf(JNIEnv *env, h5str_t *out_str, hid_t container, hid_t tid, void *i
 
                 switch (oi.type) {
                     case H5O_TYPE_GROUP:
-                        if (sprintf(this_str, "%s %s", H5_TOOLS_GROUP, obj_tok_str) < 0)
-                            H5_JNI_FATAL_ERROR(ENVONLY, "h5str_sprintf: sprintf failure");
+                        if (snprintf(this_str, size, "%s %s", H5_TOOLS_GROUP, obj_tok_str) < 0)
+                            H5_JNI_FATAL_ERROR(ENVONLY, "h5str_sprintf: snprintf failure");
                         break;
 
                     case H5O_TYPE_DATASET:
-                        if (sprintf(this_str, "%s %s", H5_TOOLS_DATASET, obj_tok_str) < 0)
-                            H5_JNI_FATAL_ERROR(ENVONLY, "h5str_sprintf: sprintf failure");
+                        if (snprintf(this_str, size, "%s %s", H5_TOOLS_DATASET, obj_tok_str) < 0)
+                            H5_JNI_FATAL_ERROR(ENVONLY, "h5str_sprintf: snprintf failure");
                         break;
 
                     case H5O_TYPE_NAMED_DATATYPE:
-                        if (sprintf(this_str, "%s %s", H5_TOOLS_DATATYPE, obj_tok_str) < 0)
-                            H5_JNI_FATAL_ERROR(ENVONLY, "h5str_sprintf: sprintf failure");
+                        if (snprintf(this_str, size, "%s %s", H5_TOOLS_DATATYPE, obj_tok_str) < 0)
+                            H5_JNI_FATAL_ERROR(ENVONLY, "h5str_sprintf: snprintf failure");
                         break;
 
                     case H5O_TYPE_UNKNOWN:
                     case H5O_TYPE_NTYPES:
                     default:
-                        if (sprintf(this_str, "%u-%s", (unsigned)oi.type, obj_tok_str) < 0)
-                            H5_JNI_FATAL_ERROR(ENVONLY, "h5str_sprintf: sprintf failure");
+                        if (snprintf(this_str, size, "%u-%s", (unsigned)oi.type, obj_tok_str) < 0)
+                            H5_JNI_FATAL_ERROR(ENVONLY, "h5str_sprintf: snprintf failure");
                         break;
                 }
 
@@ -3881,7 +3882,7 @@ obj_info_all(hid_t loc_id, const char *name, const H5L_info2_t *info, void *op_d
     datainfo->ltype[datainfo->count]     = -1;
     datainfo->obj_token[datainfo->count] = H5O_TOKEN_UNDEF;
 
-    if (NULL == (datainfo->objname[datainfo->count] = HDstrdup(name)))
+    if (NULL == (datainfo->objname[datainfo->count] = strdup(name)))
         goto done;
 
     if ((object_exists = H5Oexists_by_name(loc_id, name, H5P_DEFAULT)) < 0)
@@ -3916,7 +3917,7 @@ obj_info_max(hid_t loc_id, const char *name, const H5L_info2_t *info, void *op_d
     datainfo->obj_token[datainfo->count] = H5O_TOKEN_UNDEF;
 
     /* This will be freed by h5str_array_free(oName, n) */
-    if (NULL == (datainfo->objname[datainfo->count] = HDstrdup(name)))
+    if (NULL == (datainfo->objname[datainfo->count] = strdup(name)))
         goto done;
 
     if (H5Oget_info3(loc_id, &object_info, H5O_INFO_ALL) < 0)

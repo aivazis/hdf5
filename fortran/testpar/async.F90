@@ -26,9 +26,8 @@ MODULE test_async_APIs
   LOGICAL :: async_enabled = .TRUE.
   LOGICAL :: mpi_thread_mult = .TRUE.
 
-  INTEGER(C_INT), PARAMETER :: logical_true = 1
-  INTEGER(C_INT), PARAMETER :: logical_false = 0
-  
+  LOGICAL(C_BOOL), PARAMETER :: logical_true = .TRUE.
+  LOGICAL(C_BOOL), PARAMETER :: logical_false = .FALSE.
 
   ! Custom group iteration callback data
   TYPE, bind(c) ::  iter_info
@@ -178,7 +177,7 @@ CONTAINS
     INTEGER(HID_T) :: space_id
     INTEGER(HID_T) :: attr_id0, attr_id1, attr_id2
     LOGICAL :: exists
-    INTEGER(C_INT), TARGET :: exists0=logical_false, exists1=logical_false, exists2=logical_false, exists3=logical_false
+    LOGICAL(C_BOOL), TARGET :: exists0=logical_false, exists1=logical_false, exists2=logical_false, exists3=logical_false
     TYPE(C_PTR) :: f_ptr, f_ptr1, f_ptr2
 
     CALL H5EScreate_f(es_id, hdferror)
@@ -788,7 +787,7 @@ CONTAINS
     INTEGER(hid_t)  :: sid = -1  ! Dataspace ID
     CHARACTER(LEN=12), PARAMETER :: CORDER_GROUP_NAME  = "corder_group"
     CHARACTER(LEN=12), PARAMETER :: CORDER_GROUP_NAME2 = "corder_grp00"
-    INTEGER(C_INT), TARGET :: exists1, exists2
+    LOGICAL(C_BOOL), TARGET :: exists1, exists2
     LOGICAL :: exists
     TYPE(C_PTR) :: f_ptr
 
@@ -1240,10 +1239,6 @@ END MODULE test_async_APIs
 !
 PROGRAM async_test
   USE, INTRINSIC :: ISO_C_BINDING, ONLY : C_INT64_T
-  USE HDF5
-  USE MPI
-  USE TH5_MISC
-  USE TH5_MISC_GEN
   USE test_async_APIs
 
   IMPLICIT NONE
@@ -1329,7 +1324,7 @@ PROGRAM async_test
      IF(.NOT.registered)THEN
         ! No VOL found registered
         async_enabled = .FALSE.
-        IF(mpi_rank==0) WRITE(*,'(A,/)') "NATIVE"
+        IF(mpi_rank==0) WRITE(*,'(A)') "NATIVE"
      ELSE
         ! (2) Check if the VOL is async compatible
         CALL h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdferror)
@@ -1338,12 +1333,12 @@ PROGRAM async_test
         CALL check("h5pget_vol_cap_flags_f", hdferror, total_error)
         CALL h5pclose_f(plist_id, hdferror)
         CALL check("h5pcreate_f", hdferror, total_error)
-        IF(H5VL_CAP_FLAG_ASYNC_F.EQ.1_C_INT64_T) async_enabled = .TRUE.
+        IF(IAND(cap_flags,H5VL_CAP_FLAG_ASYNC_F).EQ.0_C_INT64_T) async_enabled = .FALSE.
         IF(async_enabled .EQV. .FALSE.)THEN
            ! No async compatible VOL found
-           IF(mpi_rank==0) WRITE(*,'(A,/)') "NATIVE"
+           IF(mpi_rank==0) WRITE(*,'(A)') "NATIVE"
         ELSE
-           IF(mpi_rank==0) WRITE(*,'(A,/)') TRIM(vol_connector_name)
+           IF(mpi_rank==0) WRITE(*,'(A)') TRIM(vol_connector_name)
            CALL H5Vlregister_connector_by_name_f(TRIM(vol_connector_name), vol_id, hdferror)
            CALL check("H5Vlregister_connector_by_name_f", hdferror, total_error)
         ENDIF
@@ -1358,6 +1353,8 @@ PROGRAM async_test
         STOP
      ENDIF
   ENDIF
+
+  IF(mpi_rank==0) WRITE(*,'(A,L1,/)') "VOL SUPPORTS ASYNC OPERATIONS: ", async_enabled
 
   ! H5ES API TESTING
   ret_total_error = 0

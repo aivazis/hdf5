@@ -11,11 +11,16 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /*
- * Purpose: The public header file for the Windows driver
+ * Purpose:	The public header file for the Windows virtual file driver (VFD)
+ *
+ *          This VFD uses no Win32 API calls directly (though it may be
+ *          rewritten to do so in the future). It is currently defined to
+ *          be the sec2 VFD.
  */
 #ifndef H5FDwindows_H
 #define H5FDwindows_H
 
+/** Initializer for the Windows VFD */
 #define H5FD_WINDOWS (H5FD_sec2_init())
 
 #ifdef __cplusplus
@@ -44,7 +49,7 @@ extern "C" {
  *          comes.
  *
  *          Only the Windows driver is tested on Windows systems; other drivers
- *          are used at the application’s and the user’s risk.
+ *          are used at the application's and the user's risk.
  *
  *          Furthermore, the Windows driver is tested and available only on
  *          Windows systems; it is not available on non-Windows systems.

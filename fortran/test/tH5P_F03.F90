@@ -81,10 +81,6 @@ CONTAINS
 ! * Return:	Success:	0
 ! *
 ! *		Failure:	number of errors
-! *
-! * Programmer:	M. Scot Breitenfeld
-! *             June 24, 2008
-! *
 ! *-------------------------------------------------------------------------
 !
 
@@ -150,7 +146,6 @@ SUBROUTINE test_create(total_error)
   !  Compound datatype test
 
   f_ptr = C_LOC(fill_ctype)
-
   CALL H5Pget_fill_value_f(dcpl, comp_type_id, f_ptr, error)
   CALL check("H5Pget_fill_value_f",error, total_error)
 
@@ -158,8 +153,6 @@ SUBROUTINE test_create(total_error)
   fill_ctype%z = 'S'
   fill_ctype%a = 5555.
   fill_ctype%x = 55
-
-  f_ptr = C_LOC(fill_ctype)
 
   ! Test various fill values
   CALL H5Pset_fill_value_f(dcpl, H5T_NATIVE_CHARACTER, 'X', error)
@@ -190,6 +183,7 @@ SUBROUTINE test_create(total_error)
   CALL VERIFY("***ERROR: Returned wrong fill value (real)", rfill, 2.0, total_error)
 
   ! For the actual compound type
+  f_ptr = C_LOC(fill_ctype)
   CALL H5Pset_fill_value_f(dcpl, comp_type_id, f_ptr, error)
   CALL check("H5Pget_fill_value_f",error, total_error)
 
@@ -260,7 +254,6 @@ SUBROUTINE test_create(total_error)
   CALL check("H5Dget_create_plist_f", error, total_error)
 
   f_ptr = C_LOC(rd_c)
-
   CALL H5Pget_fill_value_f(dcpl, comp_type_id, f_ptr, error)
   CALL check("H5Pget_fill_value_f", error, total_error)
   CALL verify("***ERROR: Returned wrong fill value", rd_c%a, fill_ctype%a, total_error)
@@ -442,14 +435,10 @@ END SUBROUTINE test_genprop_class_callback
 !
 ! Return:      Success: 0
 !              Failure: -1
-!
-! FORTRAN Programmer: M. Scot Breitenfeld
-!                     April 1, 2014
 !-------------------------------------------------------------------------
 
 SUBROUTINE test_h5p_file_image(total_error)
 
-  USE, INTRINSIC :: iso_c_binding
   IMPLICIT NONE
   INTEGER, INTENT(INOUT) :: total_error
   INTEGER(hid_t) ::   fapl_1 = -1
@@ -514,9 +503,6 @@ END SUBROUTINE test_h5p_file_image
 !
 ! Return:      Success: 0
 !              Failure: -1
-!
-! FORTRAN Programmer: M. Scot Breitenfeld
-!                     January 10, 2012
 !-------------------------------------------------------------------------
 !
 SUBROUTINE external_test_offset(cleanup,total_error)
@@ -662,15 +648,10 @@ END SUBROUTINE external_test_offset
 ! RETURNS:
 !   Success:	0
 !   Failure:	number of errors
-!
-! FORTRAN Programmer:  M. Scot Breitenfeld
-!                      February 1, 2016
-!
 !-------------------------------------------------------------------------
 !
 SUBROUTINE test_vds(total_error)
 
-  USE ISO_C_BINDING
   IMPLICIT NONE
 
   INTEGER, INTENT(INOUT) :: total_error

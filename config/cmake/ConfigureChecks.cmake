@@ -78,7 +78,6 @@ if (WINDOWS)
   endif ()
   if (NOT UNIX AND NOT CYGWIN)
     set (${HDF_PREFIX}_HAVE_GETCONSOLESCREENBUFFERINFO 1)
-    set (${HDF_PREFIX}_GETTIMEOFDAY_GIVES_TZ 1)
     set (${HDF_PREFIX}_HAVE_TIMEZONE 1)
     set (${HDF_PREFIX}_HAVE_GETTIMEOFDAY 1)
     set (${HDF_PREFIX}_HAVE_LIBWS2_32 1)
@@ -396,7 +395,6 @@ if (MINGW OR NOT WINDOWS)
   CHECK_FUNCTION_EXISTS (gettimeofday      ${HDF_PREFIX}_HAVE_GETTIMEOFDAY)
   foreach (time_test
 #      HAVE_TIMEZONE
-      GETTIMEOFDAY_GIVES_TZ
       HAVE_TM_ZONE
       HAVE_STRUCT_TM_TM_ZONE
   )
@@ -442,7 +440,6 @@ CHECK_FUNCTION_EXISTS (pread             ${HDF_PREFIX}_HAVE_PREAD)
 CHECK_FUNCTION_EXISTS (pwrite            ${HDF_PREFIX}_HAVE_PWRITE)
 CHECK_FUNCTION_EXISTS (rand_r            ${HDF_PREFIX}_HAVE_RAND_R)
 CHECK_FUNCTION_EXISTS (random            ${HDF_PREFIX}_HAVE_RANDOM)
-CHECK_FUNCTION_EXISTS (setsysinfo        ${HDF_PREFIX}_HAVE_SETSYSINFO)
 
 CHECK_FUNCTION_EXISTS (strcasestr        ${HDF_PREFIX}_HAVE_STRCASESTR)
 CHECK_FUNCTION_EXISTS (strdup            ${HDF_PREFIX}_HAVE_STRDUP)
@@ -596,6 +593,17 @@ endif ()
 MARK_AS_ADVANCED (HDF5_ENABLE_CODESTACK)
 
 # ----------------------------------------------------------------------
+# Check if they would like to show all warnings (not suppressed internally)
+#-----------------------------------------------------------------------------
+option (HDF5_SHOW_ALL_WARNINGS "Show all warnings (not suppressed internally)." OFF)
+mark_as_advanced (HDF5_SHOW_ALL_WARNINGS)
+if (HDF5_SHOW_ALL_WARNINGS)
+  message (STATUS "....All warnings will be displayed")
+  set (${HDF_PREFIX}_SHOW_ALL_WARNINGS 1)
+endif ()
+MARK_AS_ADVANCED (HDF5_SHOW_ALL_WARNINGS)
+
+# ----------------------------------------------------------------------
 # Check if they would like to use file locking by default
 #-----------------------------------------------------------------------------
 option (HDF5_USE_FILE_LOCKING "Use file locking by default (mainly for SWMR)" ON)
@@ -666,6 +674,15 @@ if (MINGW OR NOT WINDOWS)
     list (APPEND LINK_LIBS posix4)
   endif ()
 endif ()
+
+# Check for clock_gettime() CLOCK_MONOTONIC_COARSE
+set (CMAKE_EXTRA_INCLUDE_FILES time.h)
+check_type_size(CLOCK_MONOTONIC_COARSE CLOCK_MONOTONIC_COARSE_SIZE)
+if (HAVE_CLOCK_MONOTONIC_COARSE_SIZE)
+  set (${HDF_PREFIX}_HAVE_CLOCK_MONOTONIC_COARSE 1)
+endif ()
+unset (CMAKE_EXTRA_INCLUDE_FILES)
+
 #-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
@@ -843,54 +860,67 @@ if (HDF5_BUILD_FORTRAN)
 
     list (GET PROG_OUTPUT4 0 H5_LDBL_DIG)
     list (GET PROG_OUTPUT4 1 H5_FLT128_DIG)
-  endif ()
 
-  if (${HDF_PREFIX}_SIZEOF___FLOAT128 EQUAL "0" OR FLT128_DIG EQUAL "0")
-    set (${HDF_PREFIX}_HAVE_FLOAT128 0)
-    set (${HDF_PREFIX}_SIZEOF___FLOAT128 0)
-    set (_PAC_C_MAX_REAL_PRECISION ${H5_LDBL_DIG})
+    if (${HDF_PREFIX}_SIZEOF___FLOAT128 EQUAL "0" OR FLT128_DIG EQUAL "0")
+      set (${HDF_PREFIX}_HAVE_FLOAT128 0)
+      set (${HDF_PREFIX}_SIZEOF___FLOAT128 0)
+      set (_PAC_C_MAX_REAL_PRECISION ${H5_LDBL_DIG})
+    else ()
+      set (_PAC_C_MAX_REAL_PRECISION ${H5_FLT128_DIG})
+    endif ()
+    if (NOT ${_PAC_C_MAX_REAL_PRECISION})
+      set (${HDF_PREFIX}_PAC_C_MAX_REAL_PRECISION 0)
+    else ()
+      set (${HDF_PREFIX}_PAC_C_MAX_REAL_PRECISION ${_PAC_C_MAX_REAL_PRECISION})
+    endif ()
+    message (STATUS "maximum decimal precision for C var - ${${HDF_PREFIX}_PAC_C_MAX_REAL_PRECISION}")
   else ()
-    set (_PAC_C_MAX_REAL_PRECISION ${H5_FLT128_DIG})
-  endif ()
-  if (NOT ${_PAC_C_MAX_REAL_PRECISION})
     set (${HDF_PREFIX}_PAC_C_MAX_REAL_PRECISION 0)
-  else ()
-    set (${HDF_PREFIX}_PAC_C_MAX_REAL_PRECISION ${_PAC_C_MAX_REAL_PRECISION})
   endif ()
-  message (STATUS "maximum decimal precision for C var - ${${HDF_PREFIX}_PAC_C_MAX_REAL_PRECISION}")
 
 endif()
 
 #-----------------------------------------------------------------------------
-# Macro to determine the various conversion capabilities
+# Macro to determine long double conversion properties
 #-----------------------------------------------------------------------------
-macro (H5ConversionTests TEST msg)
+macro (H5ConversionTests TEST def msg)
   if (NOT DEFINED ${TEST})
-    TRY_RUN (${TEST}_RUN   ${TEST}_COMPILE
-        ${CMAKE_BINARY_DIR}
-        ${HDF_RESOURCES_DIR}/ConversionTests.c
-        CMAKE_FLAGS -DCOMPILE_DEFINITIONS:STRING=-D${TEST}_TEST
-        OUTPUT_VARIABLE OUTPUT
-    )
-    if (${TEST}_COMPILE)
-      if (${TEST}_RUN EQUAL "0")
-        set (${TEST} 1 CACHE INTERNAL ${msg})
-        message (VERBOSE "${msg}... yes")
+    if (NOT CMAKE_CROSSCOMPILING)
+      # Build and run the test code if not cross-compiling
+      TRY_RUN (${TEST}_RUN   ${TEST}_COMPILE
+          ${CMAKE_BINARY_DIR}
+          ${HDF_RESOURCES_DIR}/ConversionTests.c
+          CMAKE_FLAGS -DCOMPILE_DEFINITIONS:STRING=-D${TEST}_TEST
+          OUTPUT_VARIABLE OUTPUT
+      )
+      if (${TEST}_COMPILE)
+        if (${TEST}_RUN EQUAL "0")
+          set (${TEST} 1 CACHE INTERNAL ${msg})
+          message (VERBOSE "${msg}... yes")
+        else ()
+          set (${TEST} "" CACHE INTERNAL ${msg})
+          message (VERBOSE "${msg}... no")
+          file (APPEND ${CMAKE_BINARY_DIR}/CMakeFiles/CMakeError.log
+                "Test ${TEST} Run failed with the following output and exit code:\n ${OUTPUT}\n"
+          )
+        endif ()
       else ()
         set (${TEST} "" CACHE INTERNAL ${msg})
         message (VERBOSE "${msg}... no")
         file (APPEND ${CMAKE_BINARY_DIR}/CMakeFiles/CMakeError.log
-              "Test ${TEST} Run failed with the following output and exit code:\n ${OUTPUT}\n"
+            "Test ${TEST} Compile failed with the following output:\n ${OUTPUT}\n"
         )
       endif ()
     else ()
-      set (${TEST} "" CACHE INTERNAL ${msg})
-      message (VERBOSE "${msg}... no")
-      file (APPEND ${CMAKE_BINARY_DIR}/CMakeFiles/CMakeError.log
-          "Test ${TEST} Compile failed with the following output:\n ${OUTPUT}\n"
-      )
+      # Use the default if there's no cache variable and cross-compiling
+      if (${def})
+        message (VERBOSE "${msg}... yes (cross-compile default)")
+        set (${TEST} 1 CACHE INTERNAL ${msg})
+      else ()
+        message (VERBOSE "${msg}... no (cross-compile default)")
+        set (${TEST} "" CACHE INTERNAL ${msg})
+      endif ()
     endif ()
-
   endif ()
 endmacro ()
 
@@ -899,7 +929,7 @@ endmacro ()
 #-----------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
-# Set the flag to indicate that the machine is using a special algorithm toconvert
+# Set the flag to indicate that the machine is using a special algorithm to convert
 # 'long double' to '(unsigned) long' values.  (This flag should only be set for
 # the IBM Power Linux.  When the bit sequence of long double is
 # 0x4351ccf385ebc8a0bfcc2a3c3d855620, the converted value of (unsigned)long
@@ -907,7 +937,7 @@ endmacro ()
 # The machine's conversion gets the correct value.  We define the macro and disable
 # this kind of test until we figure out what algorithm they use.
 #-----------------------------------------------------------------------------
-H5ConversionTests (${HDF_PREFIX}_LDOUBLE_TO_LONG_SPECIAL  "Checking IF your system converts long double to (unsigned) long values with special algorithm")
+H5ConversionTests (${HDF_PREFIX}_LDOUBLE_TO_LONG_SPECIAL FALSE "Checking IF your system converts long double to (unsigned) long values with special algorithm")
 # ----------------------------------------------------------------------
 # Set the flag to indicate that the machine is using a special algorithm
 # to convert some values of '(unsigned) long' to 'long double' values.
@@ -916,7 +946,7 @@ H5ConversionTests (${HDF_PREFIX}_LDOUBLE_TO_LONG_SPECIAL  "Checking IF your syst
 # ..., 7fffff..., the compiler uses a unknown algorithm.  We define a
 # macro and skip the test for now until we know about the algorithm.
 #-----------------------------------------------------------------------------
-H5ConversionTests (${HDF_PREFIX}_LONG_TO_LDOUBLE_SPECIAL "Checking IF your system can convert (unsigned) long to long double values with special algorithm")
+H5ConversionTests (${HDF_PREFIX}_LONG_TO_LDOUBLE_SPECIAL FALSE "Checking IF your system can convert (unsigned) long to long double values with special algorithm")
 # ----------------------------------------------------------------------
 # Set the flag to indicate that the machine can accurately convert
 # 'long double' to '(unsigned) long long' values.  (This flag should be set for
@@ -926,7 +956,7 @@ H5ConversionTests (${HDF_PREFIX}_LONG_TO_LDOUBLE_SPECIAL "Checking IF your syste
 # 0x4351ccf385ebc8a0dfcc... or 0x4351ccf385ebc8a0ffcc... will make the converted
 # values wildly wrong.  This test detects this wrong behavior and disable the test.
 #-----------------------------------------------------------------------------
-H5ConversionTests (${HDF_PREFIX}_LDOUBLE_TO_LLONG_ACCURATE "Checking IF correctly converting long double to (unsigned) long long values")
+H5ConversionTests (${HDF_PREFIX}_LDOUBLE_TO_LLONG_ACCURATE TRUE "Checking IF correctly converting long double to (unsigned) long long values")
 # ----------------------------------------------------------------------
 # Set the flag to indicate that the machine can accurately convert
 # '(unsigned) long long' to 'long double' values.  (This flag should be set for
@@ -934,9 +964,9 @@ H5ConversionTests (${HDF_PREFIX}_LDOUBLE_TO_LLONG_ACCURATE "Checking IF correctl
 # 007fff..., 00ffff..., 01ffff..., ..., 7fffff..., the converted values are twice
 # as big as they should be.
 #-----------------------------------------------------------------------------
-H5ConversionTests (${HDF_PREFIX}_LLONG_TO_LDOUBLE_CORRECT "Checking IF correctly converting (unsigned) long long to long double values")
+H5ConversionTests (${HDF_PREFIX}_LLONG_TO_LDOUBLE_CORRECT TRUE "Checking IF correctly converting (unsigned) long long to long double values")
 # ----------------------------------------------------------------------
 # Set the flag to indicate that the machine can accurately convert
 # some long double values
 #-----------------------------------------------------------------------------
-H5ConversionTests (${HDF_PREFIX}_DISABLE_SOME_LDOUBLE_CONV "Checking IF the cpu is power9 and cannot correctly converting long double values")
+H5ConversionTests (${HDF_PREFIX}_DISABLE_SOME_LDOUBLE_CONV FALSE "Checking IF the cpu is power9 and cannot correctly converting long double values")

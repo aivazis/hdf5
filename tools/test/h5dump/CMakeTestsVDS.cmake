@@ -84,28 +84,19 @@
   )
 
   foreach (vds_h5_file ${HDF5_REFERENCE_TEST_VDS})
-    get_filename_component(fname "${vds_h5_file}" NAME)
-    HDFTEST_COPY_FILE("${HDF5_TOOLS_DIR}/testfiles/vds/${vds_h5_file}" "${PROJECT_BINARY_DIR}/testfiles/vds/${fname}" "h5dump_vds_files")
+    HDFTEST_COPY_FILE("${PROJECT_SOURCE_DIR}/testfiles/vds/${vds_h5_file}" "${PROJECT_BINARY_DIR}/testfiles/vds/${vds_h5_file}" "h5dump_vds_files")
   endforeach ()
 
   foreach (vds_h5_file ${HDF5_REFERENCE_PREFIX_VDS})
-    get_filename_component(fname "${vds_h5_file}" NAME)
-    HDFTEST_COPY_FILE("${HDF5_TOOLS_DIR}/testfiles/vds/${vds_h5_file}" "${PROJECT_BINARY_DIR}/testfiles/vds/prefix/${fname}" "h5dump_vds_files")
+    HDFTEST_COPY_FILE("${PROJECT_SOURCE_DIR}/testfiles/vds/${vds_h5_file}" "${PROJECT_BINARY_DIR}/testfiles/vds/prefix/${vds_h5_file}" "h5dump_vds_files")
   endforeach ()
 
   foreach (ddl_vds ${HDF5_REFERENCE_VDS})
-    get_filename_component(fname "${ddl_vds}" NAME)
-    HDFTEST_COPY_FILE("${HDF5_TOOLS_DIR}/testfiles/vds/${ddl_vds}" "${PROJECT_BINARY_DIR}/testfiles/vds/${fname}" "h5dump_vds_files")
-  endforeach ()
-
-  foreach (ddl_vds ${HDF5_REFERENCE_VDS})
-    get_filename_component(fname "${ddl_vds}" NAME)
-    HDFTEST_COPY_FILE("${HDF5_TOOLS_DIR}/testfiles/vds/${ddl_vds}" "${PROJECT_BINARY_DIR}/testfiles/vds/prefix/${fname}" "h5dump_vds_files")
+    HDFTEST_COPY_FILE("${PROJECT_SOURCE_DIR}/expected/vds/${ddl_vds}" "${PROJECT_BINARY_DIR}/testfiles/vds/prefix/${ddl_vds}" "h5dump_vds_files")
   endforeach ()
 
   foreach (ddl_vds ${HDF5_ERROR_REFERENCE_VDS})
-    get_filename_component(fname "${ddl_vds}" NAME)
-    HDFTEST_COPY_FILE("${PROJECT_SOURCE_DIR}/errfiles/${ddl_vds}" "${PROJECT_BINARY_DIR}/testfiles/vds/${fname}" "h5dump_vds_files")
+    HDFTEST_COPY_FILE("${PROJECT_SOURCE_DIR}/errfiles/${ddl_vds}" "${PROJECT_BINARY_DIR}/testfiles/vds/${ddl_vds}" "h5dump_vds_files")
   endforeach ()
   add_custom_target(h5dump_vds_files ALL COMMENT "Copying files needed by h5dump_vds tests" DEPENDS ${h5dump_vds_files_list})
 
@@ -139,6 +130,9 @@
     set_tests_properties (H5DUMP-${resultfile} PROPERTIES
         WORKING_DIRECTORY "${PROJECT_BINARY_DIR}/testfiles/vds"
     )
+    if ("H5DUMP-${resultfile}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+      set_tests_properties (H5DUMP-${resultfile} PROPERTIES DISABLED true)
+    endif ()
   endmacro ()
 
   macro (ADD_H5_VDS_PREFIX_TEST resultfile resultcode)
@@ -171,6 +165,9 @@
               -P "${HDF_RESOURCES_DIR}/runTest.cmake"
       )
     endif ()
+    if ("H5DUMP_PREFIX-${resultfile}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+      set_tests_properties (H5DUMP_PREFIX-${resultfile} PROPERTIES DISABLED true)
+    endif ()
   endmacro ()
 
   macro (ADD_H5_VDS_LAYOUT resultfile resultcode)
@@ -197,6 +194,9 @@
               -D "TEST_REFERENCE=${resultfile}.ddl"
               -P "${HDF_RESOURCES_DIR}/runTest.cmake"
       )
+    endif ()
+    if ("H5DUMP-${resultfile}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+      set_tests_properties (H5DUMP-${resultfile} PROPERTIES DISABLED true)
     endif ()
   endmacro ()
 

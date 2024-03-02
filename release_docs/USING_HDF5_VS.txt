@@ -11,6 +11,9 @@ be found in the USING_HDF5_CMake.txt file found in this folder.
 
 NOTE: Building applications with the dynamic/shared hdf5 libraries requires
       that the "H5_BUILT_AS_DYNAMIC_LIB" compile definition be used.
+      Go to "Project" and select "Properties", find "Configuration Properties",
+      and then "C/C+±"and then "Preprocessor".
+      Add H5_BUILT_AS_DYNAMIC_LIB to Preprocessor definitions.
 
 The following two sections are helpful if you do not use CMake to build
 your applications.
@@ -38,7 +41,12 @@ Using Visual Studio 2010 and above with HDF5 Libraries built with Visual Studio 
           library, and then optionally the HDF5 High Level, Fortran or C++
           libraries. For example, to compile a C++ application, enter:
 
-          szip.lib zlib.lib hdf5.lib hdf5_cpp.lib
+          hdf5.lib hdf5_cpp.lib
+
+          For static linking:
+            HDF5 libraries:        libhdf5.lib libhdf5_cpp.lib
+            Compression libraries: libszaec.lib libaec.lib libzlib.lib
+            System libraries:      shlwapi.lib
 
 
 ==========================================================================

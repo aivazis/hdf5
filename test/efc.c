@@ -10,10 +10,6 @@
  * help@hdfgroup.org.                                                        *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* Programmer:  Neil Fortner
- *              December 16, 2010
- */
-
 #include "h5test.h"
 
 #define H5F_FRIEND /*suppress error about including H5Fpkg	  */
@@ -45,9 +41,6 @@ hid_t fapl_id = H5I_INVALID_HID;
  *
  * Return:      Success: 0
  *              Failure: Number of errors
- *
- * Programmer:  Neil Fortner
- *              December 16, 2010
  *
  *-------------------------------------------------------------------------
  */
@@ -470,9 +463,6 @@ error:
  * Return:      Success: 0
  *              Failure: Number of errors
  *
- * Programmer:  Neil Fortner
- *              January 4, 2011
- *
  *-------------------------------------------------------------------------
  */
 static unsigned
@@ -792,9 +782,6 @@ error:
  *
  * Return:      Success: 0
  *              Failure: Number of errors
- *
- * Programmer:  Neil Fortner
- *              January 6, 2011
  *
  *-------------------------------------------------------------------------
  */
@@ -2643,9 +2630,6 @@ error:
  *
  * Return:      EXIT_SUCCESS/EXIT_FAILURE
  *
- * Programmer:  Neil Fortner
- *              December 16, 2010
- *
  *-------------------------------------------------------------------------
  */
 int
@@ -2654,11 +2638,11 @@ main(void)
     unsigned              nerrors = 0;            /* track errors */
     H5P_genplist_t       *plist;                  /* Property list pointer for FAPL */
     H5VL_connector_prop_t connector_prop;         /* Property for VOL connector ID & info */
-    hbool_t               api_ctx_pushed = FALSE; /* Whether API context pushed */
+    bool                  api_ctx_pushed = false; /* Whether API context pushed */
     int                   i;                      /* iterator */
 
     /* Test Setup */
-    HDputs("Testing the external file cache");
+    puts("Testing the external file cache");
 
     /* Create property lists */
     fcpl_id = H5Pcreate(H5P_FILE_CREATE);
@@ -2666,7 +2650,7 @@ main(void)
 
     /* Allocate memory for filenames */
     for (i = 0; i < N_FILENAMES; i++) {
-        filename[i] = (char *)HDcalloc(PATH_MAX, sizeof(char));
+        filename[i] = (char *)calloc(PATH_MAX, sizeof(char));
     }
 
     /* Patch filenames */
@@ -2680,7 +2664,7 @@ main(void)
     /* Push API context */
     if (H5CX_push() < 0)
         FAIL_STACK_ERROR;
-    api_ctx_pushed = TRUE;
+    api_ctx_pushed = true;
 
     /* Get the VOL info from the fapl */
     plist = (H5P_genplist_t *)H5I_object(fapl_id);
@@ -2704,25 +2688,25 @@ main(void)
     nerrors += (h5_verify_cached_stabs(FILENAME, fapl_id) < 0 ? 1 : 0);
 
     /* Pop API context */
-    if (api_ctx_pushed && H5CX_pop(FALSE) < 0)
+    if (api_ctx_pushed && H5CX_pop(false) < 0)
         FAIL_STACK_ERROR;
-    api_ctx_pushed = FALSE;
+    api_ctx_pushed = false;
 
     if (nerrors)
         goto error;
 
-    HDputs("All external file cache tests passed.");
+    puts("All external file cache tests passed.");
 
     h5_clean_files(FILENAME, fapl_id);
 
     for (i = 0; i < N_FILENAMES; i++) {
-        HDfree(filename[i]);
+        free(filename[i]);
     }
 
     return EXIT_SUCCESS;
 
 error:
-    HDputs("*** TESTS FAILED ***");
+    puts("*** TESTS FAILED ***");
 
     H5E_BEGIN_TRY
     {
@@ -2731,10 +2715,10 @@ error:
     H5E_END_TRY
 
     if (api_ctx_pushed)
-        H5CX_pop(FALSE);
+        H5CX_pop(false);
 
     for (i = 0; i < N_FILENAMES; i++) {
-        HDfree(filename[i]);
+        free(filename[i]);
     }
 
     return EXIT_FAILURE;

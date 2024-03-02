@@ -11,9 +11,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /*
- * Programmer:    Robb Matzke
- *        Monday, November 10, 1997
- *
  * Purpose:    Implements a file driver which dispatches I/O requests to
  *        other file drivers depending on the purpose of the address
  *        region being accessed. For instance, all meta-data could be
@@ -27,11 +24,11 @@
 
 #include "hdf5.h"
 
-#ifndef FALSE
-#define FALSE 0
+#ifndef false
+#define false 0
 #endif
-#ifndef TRUE
-#define TRUE 1
+#ifndef true
+#define true 1
 #endif
 
 /* Windows doesn't like some POSIX names and redefines them with an
@@ -110,7 +107,7 @@ typedef struct H5FD_multi_fapl_t {
     hid_t      memb_fapl[H5FD_MEM_NTYPES]; /*member access properties      */
     char      *memb_name[H5FD_MEM_NTYPES]; /*name generators               */
     haddr_t    memb_addr[H5FD_MEM_NTYPES]; /*starting addr per member      */
-    hbool_t    relax;                      /*less stringent error checking */
+    bool       relax;                      /*less stringent error checking */
 } H5FD_multi_fapl_t;
 
 /*
@@ -140,10 +137,10 @@ typedef struct H5FD_multi_dxpl_t {
 
 /* Private functions */
 static herr_t H5FD_split_populate_config(const char *meta_ext, hid_t meta_plist_id, const char *raw_ext,
-                                         hid_t raw_plist_id, hbool_t relax, H5FD_multi_fapl_t *fa_out);
+                                         hid_t raw_plist_id, bool relax, H5FD_multi_fapl_t *fa_out);
 static herr_t H5FD_multi_populate_config(const H5FD_mem_t *memb_map, const hid_t *memb_fapl,
-                                         const char *const *memb_name, const haddr_t *memb_addr,
-                                         hbool_t relax, H5FD_multi_fapl_t *fa_out);
+                                         const char *const *memb_name, const haddr_t *memb_addr, bool relax,
+                                         H5FD_multi_fapl_t *fa_out);
 static int    compute_next(H5FD_multi_t *file);
 static int    open_members(H5FD_multi_t *file);
 
@@ -170,9 +167,9 @@ static herr_t  H5FD_multi_read(H5FD_t *_file, H5FD_mem_t type, hid_t dxpl_id, ha
                                void *_buf /*out*/);
 static herr_t  H5FD_multi_write(H5FD_t *_file, H5FD_mem_t type, hid_t dxpl_id, haddr_t addr, size_t size,
                                 const void *_buf);
-static herr_t  H5FD_multi_flush(H5FD_t *_file, hid_t dxpl_id, hbool_t closing);
-static herr_t  H5FD_multi_truncate(H5FD_t *_file, hid_t dxpl_id, hbool_t closing);
-static herr_t  H5FD_multi_lock(H5FD_t *_file, hbool_t rw);
+static herr_t  H5FD_multi_flush(H5FD_t *_file, hid_t dxpl_id, bool closing);
+static herr_t  H5FD_multi_truncate(H5FD_t *_file, hid_t dxpl_id, bool closing);
+static herr_t  H5FD_multi_lock(H5FD_t *_file, bool rw);
 static herr_t  H5FD_multi_unlock(H5FD_t *_file);
 static herr_t  H5FD_multi_delete(const char *filename, hid_t fapl_id);
 static herr_t  H5FD_multi_ctl(H5FD_t *_file, uint64_t op_code, uint64_t flags, const void *input,
@@ -231,9 +228,6 @@ static const H5FD_class_t H5FD_multi_g = {
  * Return:      Success:    The driver ID for the multi driver
  *              Failure:    H5I_INVALID_HID
  *
- * Programmer:  Robb Matzke
- *              Wednesday, August  4, 1999
- *
  *-------------------------------------------------------------------------
  */
 hid_t
@@ -254,9 +248,6 @@ H5FD_multi_init(void)
  * Purpose:     Shut down the VFD
  *
  * Returns:     Non-negative on success or negative on failure
- *
- * Programmer:  Quincey Koziol
- *              Friday, Jan 30, 2004
  *
  *---------------------------------------------------------------------------
  */
@@ -280,9 +271,6 @@ H5FD_multi_term(void)
  *
  *            Failure:    -1
  *
- * Programmer:    Robb Matzke
- *              Wednesday, August 11, 1999
- *
  *-------------------------------------------------------------------------
  */
 herr_t
@@ -297,7 +285,7 @@ H5Pset_fapl_split(hid_t fapl, const char *meta_ext, hid_t meta_plist_id, const c
     /* Clear the error stack */
     H5Eclear2(H5E_DEFAULT);
 
-    if (H5FD_split_populate_config(meta_ext, meta_plist_id, raw_ext, raw_plist_id, TRUE, &fa) < 0)
+    if (H5FD_split_populate_config(meta_ext, meta_plist_id, raw_ext, raw_plist_id, true, &fa) < 0)
         H5Epush_ret(func, H5E_ERR_CLS, H5E_INTERNAL, H5E_CANTSET, "can't setup split driver configuration",
                     -1);
 
@@ -368,15 +356,12 @@ H5Pset_fapl_split(hid_t fapl, const char *meta_ext, hid_t meta_plist_id, const c
  *
  *            hid_t fapl = H5Pcreate(H5P_FILE_ACCESS);
  *            H5Pset_fapl_multi(fapl, memb_map, memb_fapl,
- *                              memb_name, memb_addr, TRUE);
+ *                              memb_name, memb_addr, true);
  *
  *
  * Return:    Success:    Non-negative
  *
  *            Failure:    Negative
- *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
  *
  *-------------------------------------------------------------------------
  */
@@ -393,7 +378,7 @@ H5Pset_fapl_multi(hid_t fapl_id, const H5FD_mem_t *memb_map, const hid_t *memb_f
     H5Eclear2(H5E_DEFAULT);
 
     /* Check arguments and supply default values */
-    if (H5I_GENPROP_LST != H5Iget_type(fapl_id) || TRUE != H5Pisa_class(fapl_id, H5P_FILE_ACCESS))
+    if (H5I_GENPROP_LST != H5Iget_type(fapl_id) || true != H5Pisa_class(fapl_id, H5P_FILE_ACCESS))
         H5Epush_ret(func, H5E_ERR_CLS, H5E_PLIST, H5E_BADVALUE, "not an access list", -1);
     if (H5FD_multi_populate_config(memb_map, memb_fapl, memb_name, memb_addr, relax, &fa) < 0)
         H5Epush_ret(func, H5E_ERR_CLS, H5E_INTERNAL, H5E_CANTSET, "can't setup driver configuration", -1);
@@ -412,9 +397,6 @@ H5Pset_fapl_multi(hid_t fapl_id, const H5FD_mem_t *memb_map, const hid_t *memb_f
  *
  *            Failure:    Negative
  *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
- *
  *-------------------------------------------------------------------------
  */
 herr_t
@@ -431,7 +413,7 @@ H5Pget_fapl_multi(hid_t fapl_id, H5FD_mem_t *memb_map /*out*/, hid_t *memb_fapl 
     /* Clear the error stack */
     H5Eclear2(H5E_DEFAULT);
 
-    if (H5I_GENPROP_LST != H5Iget_type(fapl_id) || TRUE != H5Pisa_class(fapl_id, H5P_FILE_ACCESS))
+    if (H5I_GENPROP_LST != H5Iget_type(fapl_id) || true != H5Pisa_class(fapl_id, H5P_FILE_ACCESS))
         H5Epush_ret(func, H5E_ERR_CLS, H5E_PLIST, H5E_BADTYPE, "not an access list", -1);
     if (H5FD_MULTI != H5Pget_driver(fapl_id))
         H5Epush_ret(func, H5E_ERR_CLS, H5E_PLIST, H5E_BADVALUE, "incorrect VFL driver", -1);
@@ -441,7 +423,7 @@ H5Pget_fapl_multi(hid_t fapl_id, H5FD_mem_t *memb_map /*out*/, hid_t *memb_fapl 
     }
     H5E_END_TRY
     if (!fa || (H5P_FILE_ACCESS_DEFAULT == fapl_id)) {
-        if (H5FD_multi_populate_config(NULL, NULL, NULL, NULL, TRUE, &default_fa) < 0)
+        if (H5FD_multi_populate_config(NULL, NULL, NULL, NULL, true, &default_fa) < 0)
             H5Epush_ret(func, H5E_ERR_CLS, H5E_VFL, H5E_CANTSET, "can't setup default driver configuration",
                         -1);
         fa = &default_fa;
@@ -486,7 +468,7 @@ H5Pget_fapl_multi(hid_t fapl_id, H5FD_mem_t *memb_map /*out*/, hid_t *memb_fapl 
  */
 static herr_t
 H5FD_split_populate_config(const char *meta_ext, hid_t meta_plist_id, const char *raw_ext, hid_t raw_plist_id,
-                           hbool_t relax, H5FD_multi_fapl_t *fa_out)
+                           bool relax, H5FD_multi_fapl_t *fa_out)
 {
     static const char *func = "H5FD_split_populate_config"; /* Function Name for error reporting */
     static char
@@ -566,7 +548,7 @@ H5FD_split_populate_config(const char *meta_ext, hid_t meta_plist_id, const char
          * All members of MEMB_FAPL must be either defaults or actual file
          * access property lists.
          */
-        if (H5P_DEFAULT != _memb_fapl[mmt] && TRUE != H5Pisa_class(_memb_fapl[mmt], H5P_FILE_ACCESS))
+        if (H5P_DEFAULT != _memb_fapl[mmt] && true != H5Pisa_class(_memb_fapl[mmt], H5P_FILE_ACCESS))
             H5Epush_ret(func, H5E_ERR_CLS, H5E_INTERNAL, H5E_BADVALUE, "file resource type incorrect", -1);
 
         /* All names must be defined */
@@ -612,7 +594,7 @@ H5FD_split_populate_config(const char *meta_ext, hid_t meta_plist_id, const char
  */
 static herr_t
 H5FD_multi_populate_config(const H5FD_mem_t *memb_map, const hid_t *memb_fapl, const char *const *memb_name,
-                           const haddr_t *memb_addr, hbool_t relax, H5FD_multi_fapl_t *fa_out)
+                           const haddr_t *memb_addr, bool relax, H5FD_multi_fapl_t *fa_out)
 {
     static const char *func    = "H5FD_multi_populate_config"; /* Function Name for error reporting */
     static const char *letters = "Xsbrglo";
@@ -666,7 +648,7 @@ H5FD_multi_populate_config(const H5FD_mem_t *memb_map, const hid_t *memb_fapl, c
          * All members of MEMB_FAPL must be either defaults or actual file
          * access property lists.
          */
-        if (H5P_DEFAULT != memb_fapl[mmt] && TRUE != H5Pisa_class(memb_fapl[mmt], H5P_FILE_ACCESS))
+        if (H5P_DEFAULT != memb_fapl[mmt] && true != H5Pisa_class(memb_fapl[mmt], H5P_FILE_ACCESS))
             H5Epush_ret(func, H5E_ERR_CLS, H5E_INTERNAL, H5E_BADVALUE, "file resource type incorrect", -1);
 
         /* All names must be defined */
@@ -707,9 +689,6 @@ H5FD_multi_populate_config(const H5FD_mem_t *memb_map, const hid_t *memb_fapl, c
  * Return:    Success:    The super block driver data size.
  *
  *            Failure:    never fails
- *
- * Programmer:    Robb Matzke
- *              Monday, August 16, 1999
  *
  *-------------------------------------------------------------------------
  */
@@ -759,9 +738,6 @@ H5FD_multi_sb_size(H5FD_t *_file)
  * Return:    Success:    0
  *
  *            Failure:    -1
- *
- * Programmer:    Robb Matzke
- *              Monday, August 16, 1999
  *
  *-------------------------------------------------------------------------
  */
@@ -841,9 +817,6 @@ H5FD_multi_sb_encode(H5FD_t *_file, char *name /*out*/, unsigned char *buf /*out
  *
  *            Failure:    -1
  *
- * Programmer:    Robb Matzke
- *              Monday, August 16, 1999
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
@@ -854,8 +827,8 @@ H5FD_multi_sb_decode(H5FD_t *_file, const char *name, const unsigned char *buf)
     H5FD_mem_t         map[H5FD_MEM_NTYPES];
     int                i;
     size_t             nseen       = 0;
-    hbool_t            map_changed = FALSE;
-    hbool_t            in_use[H5FD_MEM_NTYPES];
+    bool               map_changed = false;
+    bool               in_use[H5FD_MEM_NTYPES];
     const char        *memb_name[H5FD_MEM_NTYPES];
     haddr_t            memb_addr[H5FD_MEM_NTYPES];
     haddr_t            memb_eoa[H5FD_MEM_NTYPES];
@@ -885,7 +858,7 @@ H5FD_multi_sb_decode(H5FD_t *_file, const char *name, const unsigned char *buf)
     for (i = 0; i < 6; i++) {
         map[i + 1] = (H5FD_mem_t)buf[i];
         if (file->fa.memb_map[i + 1] != map[i + 1])
-            map_changed = TRUE;
+            map_changed = true;
     }
 
     UNIQUE_MEMBERS (map, mt) {
@@ -932,7 +905,7 @@ H5FD_multi_sb_decode(H5FD_t *_file, const char *name, const unsigned char *buf)
         /* Close files which are unused now */
         memset(in_use, 0, sizeof in_use);
         UNIQUE_MEMBERS (map, mt) {
-            in_use[mt] = TRUE;
+            in_use[mt] = true;
         }
         END_MEMBERS
         ALL_MEMBERS (mt) {
@@ -989,9 +962,6 @@ H5FD_multi_sb_decode(H5FD_t *_file, const char *name, const unsigned char *buf)
  *
  *            Failure:    NULL
  *
- * Programmer:    Robb Matzke
- *              Friday, August 13, 1999
- *
  *-------------------------------------------------------------------------
  */
 static void *
@@ -1013,9 +983,6 @@ H5FD_multi_fapl_get(H5FD_t *_file)
  * Return:    Success:    Ptr to a new property list
  *
  *            Failure:    NULL
- *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
  *
  *-------------------------------------------------------------------------
  */
@@ -1074,9 +1041,6 @@ H5FD_multi_fapl_copy(const void *_old_fa)
  *
  *            Failure:    -1
  *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
@@ -1111,9 +1075,6 @@ H5FD_multi_fapl_free(void *_fa)
  *                caller, which is always H5FD_open().
  *
  *            Failure:    NULL
- *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
  *
  *-------------------------------------------------------------------------
  */
@@ -1154,11 +1115,11 @@ H5FD_multi_open(const char *name, unsigned flags, hid_t fapl_id, haddr_t maxaddr
         close_fapl = fapl_id = H5Pcreate(H5P_FILE_ACCESS);
         if (env && !strcmp(env, "split")) {
             if (H5Pset_fapl_split(fapl_id, NULL, H5P_DEFAULT, NULL, H5P_DEFAULT) < 0)
-                H5Epush_goto(func, H5E_ERR_CLS, H5E_FILE, H5E_CANTSET, "can't set property value", error)
+                H5Epush_goto(func, H5E_ERR_CLS, H5E_FILE, H5E_CANTSET, "can't set property value", error);
         }
         else {
-            if (H5Pset_fapl_multi(fapl_id, NULL, NULL, NULL, NULL, TRUE) < 0)
-                H5Epush_goto(func, H5E_ERR_CLS, H5E_FILE, H5E_CANTSET, "can't set property value", error)
+            if (H5Pset_fapl_multi(fapl_id, NULL, NULL, NULL, NULL, true) < 0)
+                H5Epush_goto(func, H5E_ERR_CLS, H5E_FILE, H5E_CANTSET, "can't set property value", error);
         }
 
         fa = (const H5FD_multi_fapl_t *)H5Pget_driver_info(fapl_id);
@@ -1181,11 +1142,11 @@ H5FD_multi_open(const char *name, unsigned flags, hid_t fapl_id, haddr_t maxaddr
     file->name     = my_strdup(name);
     if (close_fapl >= 0)
         if (H5Pclose(close_fapl) < 0)
-            H5Epush_goto(func, H5E_ERR_CLS, H5E_FILE, H5E_CANTCLOSEOBJ, "can't close property list", error)
+            H5Epush_goto(func, H5E_ERR_CLS, H5E_FILE, H5E_CANTCLOSEOBJ, "can't close property list", error);
 
-                /* Compute derived properties and open member files */
-                if (compute_next(file) < 0) H5Epush_goto(func, H5E_ERR_CLS, H5E_INTERNAL, H5E_BADVALUE,
-                                                         "compute_next() failed", error);
+    /* Compute derived properties and open member files */
+    if (compute_next(file) < 0)
+        H5Epush_goto(func, H5E_ERR_CLS, H5E_INTERNAL, H5E_BADVALUE, "compute_next() failed", error);
     if (open_members(file) < 0)
         H5Epush_goto(func, H5E_ERR_CLS, H5E_INTERNAL, H5E_BADVALUE, "open_members() failed", error);
 
@@ -1226,9 +1187,6 @@ error:
  *            Failure:    Negative with as many members closed as
  *                possible. The only subsequent operation
  *                permitted on the file is a close operation.
- *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
  *
  *-------------------------------------------------------------------------
  */
@@ -1284,9 +1242,6 @@ H5FD_multi_close(H5FD_t *_file)
  *
  *            Failure:    never fails (arguments were checked by th caller).
  *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
- *
  *-------------------------------------------------------------------------
  */
 static int
@@ -1329,9 +1284,6 @@ H5FD_multi_cmp(const H5FD_t *_f1, const H5FD_t *_f2)
  *
  *            Failure:    negative
  *
- * Programmer:    Quincey Koziol
- *              Tuesday, September 26, 2000
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
@@ -1360,9 +1312,6 @@ H5FD_multi_query(const H5FD_t *_f, unsigned long *flags /* out */)
  * Return:    Success:    non-negative
  *            Failure:    negative
  *
- * Programmer:    Quincey Koziol
- *              Tuesday, October  9, 2008
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
@@ -1386,9 +1335,6 @@ H5FD_multi_get_type_map(const H5FD_t *_file, H5FD_mem_t *type_map)
  * Return:    Success:    The end-of-address-marker
  *
  *            Failure:    HADDR_UNDEF
- *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
  *
  *-------------------------------------------------------------------------
  */
@@ -1490,9 +1436,6 @@ H5FD_multi_get_eoa(const H5FD_t *_file, H5FD_mem_t type)
  *
  *            Failure:    -1
  *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
@@ -1553,9 +1496,6 @@ H5FD_multi_set_eoa(H5FD_t *_file, H5FD_mem_t type, haddr_t eoa)
  *                EOA, whichever is larger.
  *
  *            Failure:          HADDR_UNDEF
- *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
  *
  *-------------------------------------------------------------------------
  */
@@ -1645,9 +1585,6 @@ H5FD_multi_get_eof(const H5FD_t *_file, H5FD_mem_t type)
  *
  * Returns:        Non-negative if succeed or negative if fails.
  *
- * Programmer:     Raymond Lu
- *                 Sept. 16, 2002
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
@@ -1678,9 +1615,6 @@ H5FD_multi_get_handle(H5FD_t *_file, hid_t fapl, void **file_handle)
  * Return:    Success:    Address of new memory
  *
  *            Failure:    HADDR_UNDEF
- *
- * Programmer:    Robb Matzke
- *              Thursday, August 12, 1999
  *
  *-------------------------------------------------------------------------
  */
@@ -1735,9 +1669,6 @@ H5FD_multi_alloc(H5FD_t *_file, H5FD_mem_t type, hid_t dxpl_id, hsize_t size)
  *
  *            Failure:    -1
  *
- * Programmer:    Robb Matzke
- *              Thursday, August 12, 1999
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
@@ -1769,9 +1700,6 @@ H5FD_multi_free(H5FD_t *_file, H5FD_mem_t type, hid_t dxpl_id, haddr_t addr, hsi
  *                buffer BUF.
  *
  *            Failure:    -1, contents of buffer BUF are undefined.
- *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
  *
  *-------------------------------------------------------------------------
  */
@@ -1816,9 +1744,6 @@ H5FD_multi_read(H5FD_t *_file, H5FD_mem_t type, hid_t dxpl_id, haddr_t addr, siz
  *
  *            Failure:    -1
  *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
@@ -1860,13 +1785,10 @@ H5FD_multi_write(H5FD_t *_file, H5FD_mem_t type, hid_t dxpl_id, haddr_t addr, si
  *
  *            Failure:    -1, as many files flushed as possible.
  *
- * Programmer:    Robb Matzke
- *              Wednesday, August  4, 1999
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5FD_multi_flush(H5FD_t *_file, hid_t dxpl_id, hbool_t closing)
+H5FD_multi_flush(H5FD_t *_file, hid_t dxpl_id, bool closing)
 {
     H5FD_multi_t      *file = (H5FD_multi_t *)_file;
     H5FD_mem_t         mt;
@@ -1933,13 +1855,10 @@ H5FD_multi_flush(H5FD_t *_file, hid_t dxpl_id, hbool_t closing)
  * Return:    Success:    0
  *            Failure:    -1, as many files truncated as possible.
  *
- * Programmer:    Quincey Koziol
- *              Thursday, January 31, 2008
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5FD_multi_truncate(H5FD_t *_file, hid_t dxpl_id, hbool_t closing)
+H5FD_multi_truncate(H5FD_t *_file, hid_t dxpl_id, bool closing)
 {
     H5FD_multi_t      *file = (H5FD_multi_t *)_file;
     H5FD_mem_t         mt;
@@ -1977,12 +1896,10 @@ H5FD_multi_truncate(H5FD_t *_file, hid_t dxpl_id, hbool_t closing)
  * Return:    Success:    0
  *            Failure:    -1
  *
- * Programmer:    Vailin Choi; March 2015
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5FD_multi_lock(H5FD_t *_file, hbool_t rw)
+H5FD_multi_lock(H5FD_t *_file, bool rw)
 {
     H5FD_multi_t      *file    = (H5FD_multi_t *)_file;
     int                nerrors = 0;
@@ -2038,8 +1955,6 @@ H5FD_multi_lock(H5FD_t *_file, hbool_t rw)
  * Return:    Success:    0
  *            Failure:    -1
  *
- * Programmer:    Vailin Choi; March 2015
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
@@ -2074,9 +1989,6 @@ H5FD_multi_unlock(H5FD_t *_file)
  * Return:    Success:    0
  *
  *            Failure:    -1
- *
- * Programmer:    Robb Matzke
- *              Monday, August 23, 1999
  *
  *-------------------------------------------------------------------------
  */
@@ -2117,9 +2029,6 @@ compute_next(H5FD_multi_t *file)
  * Return:    Success:    0
  *
  *            Failure:    -1
- *
- * Programmer:    Robb Matzke
- *              Monday, August 23, 1999
  *
  *-------------------------------------------------------------------------
  */
@@ -2203,11 +2112,11 @@ H5FD_multi_delete(const char *filename, hid_t fapl_id)
         char *env = getenv(HDF5_DRIVER);
 
         if (env && !strcmp(env, "split")) {
-            if (H5FD_split_populate_config(NULL, H5P_DEFAULT, NULL, H5P_DEFAULT, TRUE, &default_fa) < 0)
+            if (H5FD_split_populate_config(NULL, H5P_DEFAULT, NULL, H5P_DEFAULT, true, &default_fa) < 0)
                 H5Epush_ret(func, H5E_ERR_CLS, H5E_VFL, H5E_CANTSET, "can't setup driver configuration", -1);
         }
         else {
-            if (H5FD_multi_populate_config(NULL, NULL, NULL, NULL, TRUE, &default_fa) < 0)
+            if (H5FD_multi_populate_config(NULL, NULL, NULL, NULL, true, &default_fa) < 0)
                 H5Epush_ret(func, H5E_ERR_CLS, H5E_VFL, H5E_CANTSET, "can't setup driver configuration", -1);
         }
 

@@ -11,9 +11,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /*
- * Programmer:  Raymond Lu
- *              7 September 2010
- *
  * Purpose:     Make sure dataset, file, and library can close properly when a
  *              mandatory filter fails.
  */
@@ -49,9 +46,6 @@ const H5Z_class2_t H5Z_FAIL_TEST[1] = {{
  *
  * Return:	Success:	Data chunk size
  *		Failure:	0
- *
- * Programmer:	Raymond Lu
- *              7 September 2010
  *
  *-------------------------------------------------------------------------
  */
@@ -94,18 +88,15 @@ filter_fail(unsigned int flags, size_t H5_ATTR_UNUSED cd_nelmts, const unsigned 
  *              Success:         0
  *              Failure:         -1
  *
- * Programmer:  Raymond Lu
- *              25 August 2010
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
-test_filter_write(char *file_name, hid_t my_fapl, hbool_t cache_enabled)
+test_filter_write(char *file_name, hid_t my_fapl, bool cache_enabled)
 {
-    hid_t   file          = -1;
-    hid_t   dataset       = -1;                 /* dataset ID */
-    hid_t   sid           = -1;                 /* dataspace ID */
-    hid_t   dcpl          = -1;                 /* dataset creation property list ID */
+    hid_t   file          = H5I_INVALID_HID;
+    hid_t   dataset       = H5I_INVALID_HID;    /* dataset ID */
+    hid_t   sid           = H5I_INVALID_HID;    /* dataspace ID */
+    hid_t   dcpl          = H5I_INVALID_HID;    /* dataset creation property list ID */
     hsize_t dims[1]       = {DIM};              /* dataspace dimension - 10*/
     hsize_t chunk_dims[1] = {FILTER_CHUNK_DIM}; /* chunk dimension - 2*/
     int     points[DIM];                        /* Data */
@@ -138,7 +129,7 @@ test_filter_write(char *file_name, hid_t my_fapl, hbool_t cache_enabled)
         TEST_ERROR;
 
     /* Check that the filter was registered */
-    if (TRUE != H5Zfilter_avail(H5Z_FILTER_FAIL_TEST))
+    if (true != H5Zfilter_avail(H5Z_FILTER_FAIL_TEST))
         FAIL_STACK_ERROR;
 
     /* Enable the filter as mandatory */
@@ -168,7 +159,7 @@ test_filter_write(char *file_name, hid_t my_fapl, hbool_t cache_enabled)
         H5E_END_TRY
         if (ret >= 0) {
             H5_FAILED();
-            HDputs("    Data writing is supposed to fail because the chunk can't be written to file.");
+            puts("    Data writing is supposed to fail because the chunk can't be written to file.");
             TEST_ERROR;
         }
     }
@@ -189,7 +180,7 @@ test_filter_write(char *file_name, hid_t my_fapl, hbool_t cache_enabled)
         H5E_END_TRY
         if (ret >= 0) {
             H5_FAILED();
-            HDputs("    Dataset is supposed to fail because the chunk can't be flushed to file.");
+            puts("    Dataset is supposed to fail because the chunk can't be flushed to file.");
             TEST_ERROR;
         }
     }
@@ -229,18 +220,15 @@ error:
  *              Success:         0
  *              Failure:         -1
  *
- * Programmer:  Raymond Lu
- *              25 August 2010
- *
  *-------------------------------------------------------------------------
  */
 static herr_t
 test_filter_read(char *file_name, hid_t my_fapl)
 {
-    hid_t   file    = -1;
-    hid_t   dataset = -1; /* dataset ID */
-    hid_t   sid     = -1;
-    hid_t   mspace  = -1;
+    hid_t   file    = H5I_INVALID_HID;
+    hid_t   dataset = H5I_INVALID_HID; /* dataset ID */
+    hid_t   sid     = H5I_INVALID_HID;
+    hid_t   mspace  = H5I_INVALID_HID;
     hsize_t dims[1] = {DIM}; /* dataspace dimension - 10*/
     int     rbuf[DIM];       /* Data */
     hsize_t dset_size = 0;   /* Dataset storage size */
@@ -269,7 +257,7 @@ test_filter_read(char *file_name, hid_t my_fapl)
         TEST_ERROR;
 
     /* Read the chunks */
-    HDmemset(rbuf, 0, DIM * sizeof(int));
+    memset(rbuf, 0, DIM * sizeof(int));
     if (H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, rbuf) < 0)
         TEST_ERROR;
 
@@ -278,16 +266,16 @@ test_filter_read(char *file_name, hid_t my_fapl)
     for (i = 0; i < DIM; i++) {
         if (i < DIM - 2 && rbuf[i] != i) {
             H5_FAILED();
-            HDprintf("    Read different values than written.\n");
-            HDprintf("    At index %d\n", i);
-            HDprintf("    rbuf[%d]=%d\n", i, rbuf[i]);
+            printf("    Read different values than written.\n");
+            printf("    At index %d\n", i);
+            printf("    rbuf[%d]=%d\n", i, rbuf[i]);
             TEST_ERROR;
         }
         else if (i >= DIM - 2 && rbuf[i] != 0) {
             H5_FAILED();
-            HDprintf("    No value should be read.\n");
-            HDprintf("    At index %d\n", i);
-            HDprintf("    rbuf[%d]=%d\n", i, rbuf[i]);
+            printf("    No value should be read.\n");
+            printf("    At index %d\n", i);
+            printf("    rbuf[%d]=%d\n", i, rbuf[i]);
             TEST_ERROR;
         }
     }
@@ -296,8 +284,8 @@ test_filter_read(char *file_name, hid_t my_fapl)
     if ((sid = H5Dget_space(dataset)) < 0)
         TEST_ERROR;
 
-    HDmemset(hs_offset, 0, sizeof(hs_offset));
-    HDmemset(hs_size, 0, sizeof(hs_size));
+    memset(hs_offset, 0, sizeof(hs_offset));
+    memset(hs_size, 0, sizeof(hs_size));
     hs_size[0] = DIM / 2;
 
     if (H5Sselect_hyperslab(sid, H5S_SELECT_SET, hs_offset, stride, hs_size, NULL) < 0)
@@ -307,12 +295,12 @@ test_filter_read(char *file_name, hid_t my_fapl)
     if ((mspace = H5Screate_simple(1, dims, NULL)) < 0)
         TEST_ERROR;
 
-    HDmemset(zero, 0, sizeof zero);
+    memset(zero, 0, sizeof zero);
 
     if (H5Sselect_hyperslab(mspace, H5S_SELECT_SET, zero, stride, &nelmts, NULL) < 0)
         TEST_ERROR;
 
-    HDmemset(rbuf, 0, DIM * sizeof(int));
+    memset(rbuf, 0, DIM * sizeof(int));
     if (H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, sid, H5P_DEFAULT, rbuf) < 0)
         TEST_ERROR;
 
@@ -321,16 +309,16 @@ test_filter_read(char *file_name, hid_t my_fapl)
     for (i = 0; i < DIM; i += 2) {
         if (i < DIM - 2 && rbuf[i] != i) {
             H5_FAILED();
-            HDprintf("    Read different values than written.\n");
-            HDprintf("    At index %d\n", i);
-            HDprintf("    rbuf[%d]=%d\n", i, rbuf[i]);
+            printf("    Read different values than written.\n");
+            printf("    At index %d\n", i);
+            printf("    rbuf[%d]=%d\n", i, rbuf[i]);
             TEST_ERROR;
         }
         else if (i >= DIM - 2 && rbuf[i] != 0) {
             H5_FAILED();
-            HDprintf("    No value should be read.\n");
-            HDprintf("    At index %d\n", i);
-            HDprintf("    rbuf[%d]=%d\n", i, rbuf[i]);
+            printf("    No value should be read.\n");
+            printf("    At index %d\n", i);
+            printf("    rbuf[%d]=%d\n", i, rbuf[i]);
             TEST_ERROR;
         }
     }
@@ -367,9 +355,6 @@ error:
  *
  * Return:      EXIT_SUCCESS/EXIT_FAILURE
  *
- * Programmer:  Raymond Lu
- *              25 August 2010
- *
  *-------------------------------------------------------------------------
  */
 int
@@ -390,7 +375,7 @@ main(void)
 
     /* The chunk cache is used so that the flushing of data chunks happens
      * during H5Dclose.  All values are default. */
-    nerrors += (test_filter_write(filename, fapl, TRUE) < 0 ? 1 : 0);
+    nerrors += (test_filter_write(filename, fapl, true) < 0 ? 1 : 0);
     nerrors += (test_filter_read(filename, fapl) < 0 ? 1 : 0);
 
     h5_fixname(FILENAME[1], fapl, filename, sizeof filename);
@@ -401,7 +386,7 @@ main(void)
         TEST_ERROR;
 
     /* Run the test again. */
-    nerrors += (test_filter_write(filename, fapl, FALSE) < 0 ? 1 : 0);
+    nerrors += (test_filter_write(filename, fapl, false) < 0 ? 1 : 0);
     nerrors += (test_filter_read(filename, fapl) < 0 ? 1 : 0);
 
     /* Verify symbol table messages are cached */
@@ -416,11 +401,11 @@ main(void)
     if (nerrors)
         TEST_ERROR;
 
-    HDexit(EXIT_SUCCESS);
+    exit(EXIT_SUCCESS);
 
 error:
     if (nerrors) {
-        HDprintf("***** %u FAILURE%s! *****\n", nerrors, 1 == nerrors ? "" : "S");
-        HDexit(EXIT_FAILURE);
+        printf("***** %u FAILURE%s! *****\n", nerrors, 1 == nerrors ? "" : "S");
+        exit(EXIT_FAILURE);
     }
 } /* end main() */

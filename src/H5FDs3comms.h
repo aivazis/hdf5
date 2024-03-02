@@ -90,8 +90,7 @@
 /* the Authorization header format is
  *   Authorization: AWS4-HMAC-SHA256
  *                  Credential=<secret_id>/<date>/<Region>/<Service>/aws4_request,
- *                  SignedHeaders=<signed_headers>, Signature=<signature>,
- *                  SessionToken=<session_token>
+ *                  SignedHeaders=<signed_headers>, Signature=<signature>
  *  so:
  *     86 : <len("AWS4-HMAC-SHA256 Credential=///s3/aws4_request,"
  *               "SignedHeaders=,Signature=,SessionToken=")>
@@ -100,7 +99,6 @@
  * +   20 : <max? len(region)>
  * +  128 : <max? len(signed_headers)>
  * +   64 : <hex(sha256())> for the signature
- * + 4096 : <max? len(session_token)>
  */
 #define S3COMMS_MAX_AUTHORIZATION_HEADER_LENGTH (512 + (4 * 1024))
 
@@ -158,7 +156,7 @@
  *
  *     Format "S3 Credential" string from inputs, for AWS4.
  *
- *     Wrapper for HDsnprintf().
+ *     Wrapper for snprintf().
  *
  *     _HAS NO ERROR-CHECKING FACILITIES_
  *     It is left to programmer to ensure that return value confers success.
@@ -181,8 +179,8 @@
  *---------------------------------------------------------------------------
  */
 #define S3COMMS_FORMAT_CREDENTIAL(dest, access, iso8601_date, region, service)                               \
-    HDsnprintf((dest), S3COMMS_MAX_CREDENTIAL_SIZE, "%s/%s/%s/%s/aws4_request", (access), (iso8601_date),    \
-               (region), (service))
+    snprintf((dest), S3COMMS_MAX_CREDENTIAL_SIZE, "%s/%s/%s/%s/aws4_request", (access), (iso8601_date),      \
+             (region), (service))
 
 /*********************
  * PUBLIC STRUCTURES *
@@ -239,7 +237,7 @@
  *
  * `magic` (unsigned long)
  *
- *     "unique" idenfier number for the structure type
+ *     "unique" identifier number for the structure type
  *
  * `name` (char *)
  *
@@ -484,16 +482,9 @@ typedef struct {
  *
  *     Required to authenticate.
  *
- * `session_token` (char *)
- *
- *     Pointer to NULL-terminated string for "session_toke" access id to S3 resource,
- *     if this profile has temporary credentials
- *
- *     Required to authenticate users with temporary credentials
- *
  * `signing_key` (unsigned char *)
  *
- *     Pointer to `SHA256_DIGEST_LENGTH`-long string for "re-usable" signing
+ *     Pointer to `SHA256_DIGEST_LENGTH`-long string for "reusable" signing
  *     key, generated via
  *     `HMAC-SHA256(HMAC-SHA256(HMAC-SHA256(HMAC-SHA256("AWS4<secret_key>",
  *         "<yyyyMMDD"), "<aws-region>"), "<aws-service>"), "aws4_request")`
@@ -512,8 +503,8 @@ typedef struct {
     parsed_url_t  *purl;
     char          *region;
     char          *secret_id;
-    char          *session_token;
     unsigned char *signing_key;
+    char          *token;
 } s3r_t;
 
 #define S3COMMS_S3R_MAGIC 0x44d8d79
@@ -545,7 +536,7 @@ H5_DLL herr_t H5FD_s3comms_s3r_close(s3r_t *handle);
 H5_DLL size_t H5FD_s3comms_s3r_get_filesize(s3r_t *handle);
 
 H5_DLL s3r_t *H5FD_s3comms_s3r_open(const char url[], const char region[], const char id[],
-                                    const char session_token[], const unsigned char signing_key[]);
+                                    const unsigned char signing_key[], const char token[]);
 
 H5_DLL herr_t H5FD_s3comms_s3r_read(s3r_t *handle, haddr_t offset, size_t len, void *dest);
 
@@ -558,8 +549,7 @@ H5_DLL struct tm *gmnow(void);
 H5_DLL herr_t H5FD_s3comms_aws_canonical_request(char *canonical_request_dest, int cr_size,
                                                  char *signed_headers_dest, int sh_size, hrb_t *http_request);
 
-H5_DLL herr_t H5FD_s3comms_bytes_to_hex(char *dest, const unsigned char *msg, size_t msg_len,
-                                        hbool_t lowercase);
+H5_DLL herr_t H5FD_s3comms_bytes_to_hex(char *dest, const unsigned char *msg, size_t msg_len, bool lowercase);
 
 H5_DLL herr_t H5FD_s3comms_free_purl(parsed_url_t *purl);
 
@@ -583,7 +573,7 @@ H5_DLL herr_t H5FD_s3comms_tostringtosign(char *dest, const char *req_str, const
 
 H5_DLL herr_t H5FD_s3comms_trim(char *dest, char *s, size_t s_len, size_t *n_written);
 
-H5_DLL herr_t H5FD_s3comms_uriencode(char *dest, const char *s, size_t s_len, hbool_t encode_slash,
+H5_DLL herr_t H5FD_s3comms_uriencode(char *dest, const char *s, size_t s_len, bool encode_slash,
                                      size_t *n_written);
 
 #ifdef __cplusplus

@@ -11,9 +11,6 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /*
- * Programmer:  Quincey Koziol
- *              Tuesday, May 13, 2003
- *
  * Purpose:    Test dangling IDs
  */
 #include "h5test.h"
@@ -35,9 +32,6 @@ static const char *FILENAME[] = {"dangle", NULL};
  *
  * Return:    Success:    zero
  *        Failure:    non-zero
- *
- * Programmer:    Quincey Koziol
- *              Tuesday, May 13, 2003
  *
  *-------------------------------------------------------------------------
  */
@@ -133,9 +127,6 @@ error:
  * Return:    Success:    zero
  *        Failure:    non-zero
  *
- * Programmer:    Quincey Koziol
- *              Tuesday, May 13, 2003
- *
  *-------------------------------------------------------------------------
  */
 static int
@@ -225,9 +216,6 @@ error:
  *
  * Return:    Success:    zero
  *        Failure:    non-zero
- *
- * Programmer:    Quincey Koziol
- *              Tuesday, May 13, 2003
  *
  *-------------------------------------------------------------------------
  */
@@ -322,9 +310,6 @@ error:
  * Return:    Success:    zero
  *        Failure:    non-zero
  *
- * Programmer:    Quincey Koziol
- *              Thursday, August 25, 2005
- *
  *-------------------------------------------------------------------------
  */
 static int
@@ -406,9 +391,6 @@ error:
  *
  * Return:    Success:    zero
  *        Failure:    non-zero
- *
- * Programmer:    Quincey Koziol
- *              Wednesday, June 18, 2003
  *
  *-------------------------------------------------------------------------
  */
@@ -514,9 +496,6 @@ error:
  * Return:    Success:    zero
  *        Failure:    non-zero
  *
- * Programmer:    Quincey Koziol
- *              Friday, October 29, 2010
- *
  *-------------------------------------------------------------------------
  */
 static int
@@ -598,7 +577,7 @@ test_dangle_force(void)
         TEST_ERROR;
 
     /* Allocate the array of object IDs */
-    if (NULL == (objs = (hid_t *)HDcalloc((size_t)count, sizeof(hid_t))))
+    if (NULL == (objs = (hid_t *)calloc((size_t)count, sizeof(hid_t))))
         TEST_ERROR;
 
     /* Get the list of open IDs */
@@ -620,14 +599,14 @@ test_dangle_force(void)
     HDremove(filename);
 
     /* Release object ID array */
-    HDfree(objs);
+    free(objs);
 
     PASSED();
     return 0;
 
 error:
     if (objs)
-        HDfree(objs);
+        free(objs);
     return 1;
 }
 
@@ -639,9 +618,6 @@ error:
  * Return:    Success:    zero
  *        Failure:    non-zero
  *
- * Programmer:    Quincey Koziol
- *              Tuesday, May 13, 2003
- *
  *-------------------------------------------------------------------------
  */
 int
@@ -651,20 +627,20 @@ main(void)
     int         nerrors = 0;
 
     /* Get the VFD to use */
-    env_h5_drvr = HDgetenv(HDF5_DRIVER);
+    env_h5_drvr = getenv(HDF5_DRIVER);
     if (env_h5_drvr == NULL)
         env_h5_drvr = "nomatch";
 
     /* Don't run this test with the multi/split VFD. A bug in library shutdown
      * ordering causes problems with the multi VFD when IDs are left dangling.
      */
-    if (!HDstrcmp(env_h5_drvr, "multi") || !HDstrcmp(env_h5_drvr, "split")) {
-        HDputs(" -- SKIPPED for incompatible VFD --");
+    if (!strcmp(env_h5_drvr, "multi") || !strcmp(env_h5_drvr, "split")) {
+        puts(" -- SKIPPED for incompatible VFD --");
         return 0;
     }
 
     /* Run tests w/weak file close */
-    HDputs("Testing dangling objects with weak file close:");
+    puts("Testing dangling objects with weak file close:");
     nerrors += test_dangle_dataset(H5F_CLOSE_WEAK);
     nerrors += test_dangle_group(H5F_CLOSE_WEAK);
     nerrors += test_dangle_datatype1(H5F_CLOSE_WEAK);
@@ -672,7 +648,7 @@ main(void)
     nerrors += test_dangle_attribute(H5F_CLOSE_WEAK);
 
     /* Run tests w/semi file close */
-    HDputs("Testing dangling objects with semi file close:");
+    puts("Testing dangling objects with semi file close:");
     nerrors += test_dangle_dataset(H5F_CLOSE_SEMI);
     nerrors += test_dangle_group(H5F_CLOSE_SEMI);
     nerrors += test_dangle_datatype1(H5F_CLOSE_SEMI);
@@ -680,7 +656,7 @@ main(void)
     nerrors += test_dangle_attribute(H5F_CLOSE_SEMI);
 
     /* Run tests w/strong file close */
-    HDputs("Testing dangling objects with strong file close:");
+    puts("Testing dangling objects with strong file close:");
     nerrors += test_dangle_dataset(H5F_CLOSE_STRONG);
     nerrors += test_dangle_group(H5F_CLOSE_STRONG);
     nerrors += test_dangle_datatype1(H5F_CLOSE_STRONG);
@@ -693,11 +669,11 @@ main(void)
     /* Check for errors */
     if (nerrors)
         goto error;
-    HDputs("All dangling ID tests passed.");
+    puts("All dangling ID tests passed.");
 
     return 0;
 
 error:
-    HDputs("***** DANGLING ID TESTS FAILED *****");
+    puts("***** DANGLING ID TESTS FAILED *****");
     return 1;
 }

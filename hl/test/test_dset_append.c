@@ -13,13 +13,6 @@
 #include "h5hltest.h"
 #include "H5DOpublic.h"
 
-#if defined(H5_HAVE_ZLIB_H) && !defined(H5_ZLIB_HEADER)
-#define H5_ZLIB_HEADER "zlib.h"
-#endif
-#if defined(H5_ZLIB_HEADER)
-#include H5_ZLIB_HEADER /* "zlib.h" */
-#endif
-
 #define FILENAME     "test_append.h5"
 #define DNAME_NOTSET "dataset_notset"
 #define DNAME_UNLIM  "dataset_unlim"
@@ -39,8 +32,6 @@
  *
  * Return:      Success:    0
  *              Failure:    1
- *
- * Programmer:  Vailin Choi; Aug 2016
  *
  *-------------------------------------------------------------------------
  */
@@ -155,8 +146,6 @@ append_func(hid_t H5_ATTR_UNUSED dset_id, hsize_t H5_ATTR_UNUSED *cur_dims, void
  * Return:      Success:    0
  *              Failure:    1
  *
- * Programmer:  Vailin Choi; Jan 2014
- *
  *-------------------------------------------------------------------------
  */
 static int
@@ -251,7 +240,7 @@ test_dataset_append_rows_columns(hid_t fid)
                 TEST_ERROR;
 
     /* Clear the buffer */
-    HDmemset(rbuf, 0, sizeof(rbuf));
+    memset(rbuf, 0, sizeof(rbuf));
 
     /* Close the dataset */
     if (H5Dclose(did) < 0)
@@ -310,8 +299,6 @@ error:
  *
  * Return:      Success:    0
  *              Failure:    1
- *
- * Programmer:  Vailin Choi; Jan 2014
  *
  *-------------------------------------------------------------------------
  */
@@ -387,7 +374,7 @@ test_dataset_append_rows(hid_t fid)
                 TEST_ERROR;
 
     /* Clear the buffer */
-    HDmemset(rbuf, 0, sizeof(rbuf));
+    memset(rbuf, 0, sizeof(rbuf));
 
     /* Close the dataset */
     if (H5Dclose(did) < 0)
@@ -446,8 +433,6 @@ error:
  *
  * Return:      Success:    0
  *              Failure:    1
- *
- * Programmer:  Vailin Choi; Jan 2014
  *
  *-------------------------------------------------------------------------
  */
@@ -524,7 +509,7 @@ test_dataset_append_columns(hid_t fid)
                 TEST_ERROR;
 
     /* Clear the buffer */
-    HDmemset(rbuf, 0, sizeof(rbuf));
+    memset(rbuf, 0, sizeof(rbuf));
 
     /* Close the dataset */
     if (H5Dclose(did) < 0)
@@ -592,8 +577,6 @@ error:
  *
  * Return:      Success:    0
  *              Failure:    1
- *
- * Programmer:  Vailin Choi; Jan 2014
  *
  *-------------------------------------------------------------------------
  */
@@ -687,7 +670,7 @@ test_dataset_append_BUG1(hid_t fid)
             if (buf[i][j] != rbuf[i][j])
                 TEST_ERROR;
 
-    HDmemset(rbuf, 0, sizeof(rbuf));
+    memset(rbuf, 0, sizeof(rbuf));
 
     /* Close the dataset */
     if (H5Dclose(did) < 0)
@@ -755,8 +738,6 @@ error:
  *
  * Return:      Success:    0
  *              Failure:    1
- *
- * Programmer:  Vailin Choi; Jan 2014
  *
  *-------------------------------------------------------------------------
  */
@@ -850,7 +831,7 @@ test_dataset_append_BUG2(hid_t fid)
             if (buf[i][j] != rbuf[i][j])
                 TEST_ERROR;
 
-    HDmemset(rbuf, 0, sizeof(rbuf));
+    memset(rbuf, 0, sizeof(rbuf));
 
     /* Close the dataset */
     if (H5Dclose(did) < 0)
@@ -910,8 +891,6 @@ error:
  *
  * Return:      Success:    0
  *              Failure:    1
- *
- * Programmer:  Vailin Choi; Jan 2014
  *
  *-------------------------------------------------------------------------
  */
@@ -1009,7 +988,7 @@ test_dataset_append_less(hid_t fid)
                 TEST_ERROR;
 
     /* Clear the buffer */
-    HDmemset(rbuf, 0, sizeof(rbuf));
+    memset(rbuf, 0, sizeof(rbuf));
 
     /* Close the dataset */
     if (H5Dclose(did) < 0)
@@ -1072,8 +1051,6 @@ error:
  *
  * Return:      Success:    0
  *              Failure:    1
- *
- * Programmer:  Vailin Choi; Jan 2014
  *
  *-------------------------------------------------------------------------
  */
@@ -1166,7 +1143,7 @@ test_dataset_append_vary(hid_t fid)
                 TEST_ERROR;
 
     /* Clear the dataset */
-    HDmemset(rbuf, 0, sizeof(rbuf));
+    memset(rbuf, 0, sizeof(rbuf));
 
     /* Close the dataset */
     if (H5Dclose(did) < 0)
@@ -1223,8 +1200,6 @@ error:
  *              along with H5DOappend().
  *
  * Return:      EXIT_SUCCESS/EXIT_FAILURE
- *
- * Programmer:  Vailin Choi; Jan 2014
  *
  *-------------------------------------------------------------------------
  */

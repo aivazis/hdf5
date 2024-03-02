@@ -848,7 +848,7 @@ H5_DLL herr_t H5Soffset_simple(hid_t space_id, const hssize_t *offset);
  *
  * \brief Closes a dataspace selection iterator
  *
- * \space_id{sel_iter_id}
+ * \param[in] sel_iter_id Identifier of the dataspace selection iterator
  *
  * \return \herr_t
  *
@@ -865,8 +865,9 @@ H5_DLL herr_t H5Ssel_iter_close(hid_t sel_iter_id);
  *
  * \space_id{spaceid}
  * \param[in] elmt_size  Size of element in the selection
- * \param[in] flags      Selection iterator flag
- *
+ * \param[in] flags      Selection iterator flag, valid values are:
+ *                       \li @ref H5S_SEL_ITER_GET_SEQ_LIST_SORTED
+ *                       \li @ref H5S_SEL_ITER_SHARE_WITH_DATASPACE
  * \return \hid_t{valid dataspace selection iterator}
  *
  * \details H5Ssel_iter_create() creates a selection iterator and initializes
@@ -882,13 +883,13 @@ H5_DLL hid_t H5Ssel_iter_create(hid_t spaceid, size_t elmt_size, unsigned flags)
  * \brief Retrieves a list of offset / length sequences for the elements in
  *        an iterator
  *
- * \space_id{sel_iter_id}
- * \param[in]  maxseq   Maximum number of sequences to retrieve
- * \param[in]  maxelmts Maximum number of elements to retrieve in sequences
- * \param[out] nseq     Number of sequences retrieved
- * \param[out] nelmts   Number of elements retrieved, in all sequences
- * \param[out] off      Array of sequence offsets
- * \param[out] len      Array of sequence lengths
+ * \param[in]  sel_iter_id Identifier of the dataspace selection iterator
+ * \param[in]  maxseq      Maximum number of sequences to retrieve
+ * \param[in]  maxelmts    Maximum number of elements to retrieve in sequences
+ * \param[out] nseq        Number of sequences retrieved
+ * \param[out] nelmts      Number of elements retrieved, in all sequences
+ * \param[out] off         Array of sequence offsets
+ * \param[out] len         Array of sequence lengths
  *
  * \return \herr_t
  *
@@ -1026,7 +1027,7 @@ H5_DLL herr_t H5Sselect_copy(hid_t dst_id, hid_t src_id);
  *          The \p coord parameter is a pointer to a buffer containing a
  *          serialized 2-dimensional array of size \p num_elements by the
  *          rank of the dataspace. The array lists dataset elements in the
- *          point selection; that is, it’s a list of zero-based values
+ *          point selection; that is, it's a list of zero-based values
  *          specifying the coordinates in the dataset of the selected
  *          elements. The order of the element coordinates in the \p coord
  *          array specifies the order in which the array elements are
@@ -1194,8 +1195,9 @@ H5_DLL herr_t H5Sselect_elements(hid_t space_id, H5S_seloper_t op, size_t num_el
  *          2x2 blocks of array elements starting with location (1,1) with the
  *          selected blocks at locations (1,1), (5,1), (9,1), (1,5), (5,5), etc.;
  *          in Fortran, they will specify a hyperslab consisting of 21 2x2
- *          blocks of array elements starting with location (2,2) with the
- *          selected blocks at locations (2,2), (6,2), (10,2), (2,6), (6,6), etc.
+ *          blocks of array elements starting with location (2,2), since \p start
+ *          is 0-based indexed, with the selected blocks at
+ *          locations (2,2), (6,2), (10,2), (2,6), (6,6), etc.
  *
  *          Regions selected with this function call default to C order
  *          iteration when I/O is performed.

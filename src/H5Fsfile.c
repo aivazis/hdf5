@@ -44,20 +44,20 @@ static H5F_sfile_node_t *H5F_sfile_head_s = NULL;
  *
  * Return:      void
  *
- * Programmer:	Quincey Koziol
- *              Monday, July 25, 2005
- *
  *-------------------------------------------------------------------------
  */
 void
-H5F_sfile_assert_num(unsigned n)
+H5F_sfile_assert_num(unsigned H5_ATTR_NDEBUG_UNUSED n)
 {
     FUNC_ENTER_NOAPI_NOINIT_NOERR
 
+    /* The only useful work this function does is asserting so when NDEBUG
+     * is defined it's a no-op.
+     */
+#ifndef NDEBUG
     if (n == 0) {
-        /* Sanity checking */
-        HDassert(H5F_sfile_head_s == NULL);
-    } /* end if */
+        assert(H5F_sfile_head_s == NULL);
+    }
     else {
         unsigned          count; /* Number of open shared files */
         H5F_sfile_node_t *curr;  /* Current shared file node */
@@ -71,11 +71,11 @@ H5F_sfile_assert_num(unsigned n)
 
             /* Advance to next shared file node */
             curr = curr->next;
-        } /* end while */
+        }
 
-        /* Sanity checking */
-        HDassert(count == n);
-    } /* end else */
+        assert(count == n);
+    }
+#endif
 
     FUNC_LEAVE_NOAPI_VOID
 } /* H5F_sfile_assert_num() */
@@ -86,9 +86,6 @@ H5F_sfile_assert_num(unsigned n)
  * Purpose:     Add a "shared" file struct to the list of open files
  *
  * Return:      SUCCEED/FAIL
- *
- * Programmer:	Quincey Koziol
- *              Monday, July 18, 2005
  *
  *-------------------------------------------------------------------------
  */
@@ -101,11 +98,11 @@ H5F__sfile_add(H5F_shared_t *shared)
     FUNC_ENTER_PACKAGE
 
     /* Sanity check */
-    HDassert(shared);
+    assert(shared);
 
     /* Allocate new shared file node */
     if (NULL == (new_shared = H5FL_CALLOC(H5F_sfile_node_t)))
-        HGOTO_ERROR(H5E_RESOURCE, H5E_NOSPACE, FAIL, "memory allocation failed")
+        HGOTO_ERROR(H5E_RESOURCE, H5E_NOSPACE, FAIL, "memory allocation failed");
 
     /* Set shared file value */
     new_shared->shared = shared;
@@ -126,9 +123,6 @@ done:
  *
  * Return:      Non-NULL on success / NULL on failure
  *
- * Programmer:	Quincey Koziol
- *              Monday, July 18, 2005
- *
  *-------------------------------------------------------------------------
  */
 H5F_shared_t *
@@ -140,14 +134,14 @@ H5F__sfile_search(H5FD_t *lf)
     FUNC_ENTER_PACKAGE_NOERR
 
     /* Sanity check */
-    HDassert(lf);
+    assert(lf);
 
     /* Iterate through low-level files for matching low-level file info */
     curr = H5F_sfile_head_s;
     while (curr) {
         /* Check for match */
         if (0 == H5FD_cmp(curr->shared->lf, lf))
-            HGOTO_DONE(curr->shared)
+            HGOTO_DONE(curr->shared);
 
         /* Advance to next shared file node */
         curr = curr->next;
@@ -164,9 +158,6 @@ done:
  *
  * Return:      SUCCEED/FAIL
  *
- * Programmer:	Quincey Koziol
- *              Monday, July 18, 2005
- *
  *-------------------------------------------------------------------------
  */
 herr_t
@@ -179,7 +170,7 @@ H5F__sfile_remove(H5F_shared_t *shared)
     FUNC_ENTER_PACKAGE
 
     /* Sanity check */
-    HDassert(shared);
+    assert(shared);
 
     /* Locate shared file node with correct shared file */
     last = NULL;
@@ -192,7 +183,7 @@ H5F__sfile_remove(H5F_shared_t *shared)
 
     /* Indicate error if the node wasn't found */
     if (curr == NULL)
-        HGOTO_ERROR(H5E_FILE, H5E_NOTFOUND, FAIL, "can't find shared file info")
+        HGOTO_ERROR(H5E_FILE, H5E_NOTFOUND, FAIL, "can't find shared file info");
 
     /* Remove node found from list */
     if (last != NULL)

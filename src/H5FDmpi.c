@@ -11,11 +11,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /*
- * Programmer:  Quincey Koziol
- *              Friday, January 30, 2004
- *
  * Purpose:	Common routines for all MPI-based VFL drivers.
- *
  */
 
 #include "H5private.h"   /* Generic Functions			*/
@@ -37,9 +33,6 @@
  *
  *		Failure:	Negative
  *
- * Programmer:	Quincey Koziol
- *              Friday, January 30, 2004
- *
  *-------------------------------------------------------------------------
  */
 int
@@ -53,16 +46,16 @@ H5FD_mpi_get_rank(H5FD_t *file)
 
     FUNC_ENTER_NOAPI(FAIL)
 
-    HDassert(file);
+    assert(file);
     cls = (const H5FD_class_t *)(file->cls);
-    HDassert(cls);
-    HDassert(cls->ctl); /* All MPI drivers must implement this */
+    assert(cls);
+    assert(cls->ctl); /* All MPI drivers must implement this */
 
     /* Dispatch to driver */
     if ((cls->ctl)(file, H5FD_CTL_GET_MPI_RANK_OPCODE, flags, NULL, &rank_ptr) < 0)
-        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, FAIL, "driver get_rank request failed")
+        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, FAIL, "driver get_rank request failed");
 
-    HDassert(rank >= 0);
+    assert(rank >= 0);
 
     ret_value = rank;
 
@@ -79,9 +72,6 @@ done:
  *
  *		Failure:	Negative
  *
- * Programmer:	Quincey Koziol
- *              Friday, January 30, 2004
- *
  *-------------------------------------------------------------------------
  */
 int
@@ -95,17 +85,17 @@ H5FD_mpi_get_size(H5FD_t *file)
 
     FUNC_ENTER_NOAPI(FAIL)
 
-    HDassert(file);
+    assert(file);
     cls = (const H5FD_class_t *)(file->cls);
-    HDassert(cls);
-    HDassert(cls->ctl); /* All MPI drivers must implement this */
+    assert(cls);
+    assert(cls->ctl); /* All MPI drivers must implement this */
 
     /* Dispatch to driver */
     if ((cls->ctl)(file, H5FD_CTL_GET_MPI_SIZE_OPCODE, flags, NULL, &size_ptr) < 0)
-        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, FAIL, "driver get_size request failed")
+        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, FAIL, "driver get_size request failed");
 
     if (0 >= size)
-        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, FAIL, "driver get_size request returned bad value")
+        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, FAIL, "driver get_size request returned bad value");
 
     ret_value = size;
 
@@ -114,16 +104,12 @@ done:
 } /* end H5FD_mpi_get_size() */
 
 /*-------------------------------------------------------------------------
- * Function:	H5FD_mpi_get_comm
+ * Function:    H5FD_mpi_get_comm
  *
- * Purpose:	Retrieves the file's communicator
+ * Purpose:	    Retrieves the file's MPI_Comm communicator object
  *
- * Return:	Success:	The communicator (non-negative)
- *
- *		Failure:	Negative
- *
- * Programmer:	Quincey Koziol
- *              Friday, January 30, 2004
+ * Return:      Success:    The communicator object
+ *              Failure:    MPI_COMM_NULL
  *
  *-------------------------------------------------------------------------
  */
@@ -138,23 +124,62 @@ H5FD_mpi_get_comm(H5FD_t *file)
 
     FUNC_ENTER_NOAPI(MPI_COMM_NULL)
 
-    HDassert(file);
+    assert(file);
     cls = (const H5FD_class_t *)(file->cls);
-    HDassert(cls);
-    HDassert(cls->ctl); /* All MPI drivers must implement this */
+    assert(cls);
+    assert(cls->ctl); /* All MPI drivers must implement this */
 
     /* Dispatch to driver */
     if ((cls->ctl)(file, H5FD_CTL_GET_MPI_COMMUNICATOR_OPCODE, flags, NULL, &comm_ptr) < 0)
-        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, MPI_COMM_NULL, "driver get_comm request failed")
+        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, MPI_COMM_NULL, "driver get_comm request failed");
 
     if (comm == MPI_COMM_NULL)
-        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, MPI_COMM_NULL, "driver get_comm request failed -- bad comm")
+        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, MPI_COMM_NULL, "driver get_comm request failed -- bad comm");
 
     ret_value = comm;
 
 done:
     FUNC_LEAVE_NOAPI(ret_value)
 } /* end H5FD_mpi_get_comm() */
+
+/*-------------------------------------------------------------------------
+ * Function:    H5FD_mpi_get_info
+ *
+ * Purpose:     Retrieves the file's MPI_Info info object
+ *
+ * Return:      Success:    The info object
+ *              Failure:    MPI_INFO_NULL
+ *
+ *-------------------------------------------------------------------------
+ */
+MPI_Info
+H5FD_mpi_get_info(H5FD_t *file)
+{
+    const H5FD_class_t *cls;
+    uint64_t            flags    = H5FD_CTL_FAIL_IF_UNKNOWN_FLAG | H5FD_CTL_ROUTE_TO_TERMINAL_VFD_FLAG;
+    MPI_Info            info     = MPI_INFO_NULL;
+    void               *info_ptr = (void *)(&info);
+    MPI_Info            ret_value;
+
+    FUNC_ENTER_NOAPI(MPI_INFO_NULL)
+
+    assert(file);
+    cls = (const H5FD_class_t *)(file->cls);
+    assert(cls);
+    assert(cls->ctl); /* All MPI drivers must implement this */
+
+    /* Dispatch to driver */
+    if ((cls->ctl)(file, H5FD_CTL_GET_MPI_INFO_OPCODE, flags, NULL, &info_ptr) < 0)
+        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, MPI_INFO_NULL, "driver get_info request failed");
+
+    if (info == MPI_INFO_NULL)
+        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, MPI_INFO_NULL, "driver get_info request failed -- bad info object");
+
+    ret_value = info;
+
+done:
+    FUNC_LEAVE_NOAPI(ret_value)
+} /* end H5FD_mpi_get_info() */
 
 /*-------------------------------------------------------------------------
  * Function:    H5FD_mpi_MPIOff_to_haddr
@@ -165,9 +190,6 @@ done:
  *				argument.
  *
  *              Failure:	HADDR_UNDEF
- *
- * Programmer:  Unknown
- *              January 30, 1998
  *
  *-------------------------------------------------------------------------
  */
@@ -196,9 +218,6 @@ H5FD_mpi_MPIOff_to_haddr(MPI_Offset mpi_off)
  *
  * 		Failure:	Negative, MPI_OFF is undefined.
  *
- * Programmer:  Unknown
- *              January 30, 1998
- *
  *-------------------------------------------------------------------------
  */
 herr_t
@@ -208,7 +227,7 @@ H5FD_mpi_haddr_to_MPIOff(haddr_t addr, MPI_Offset *mpi_off /*out*/)
 
     FUNC_ENTER_NOAPI_NOINIT_NOERR
 
-    HDassert(mpi_off);
+    assert(mpi_off);
 
     /* Convert the HDF5 address into an MPI offset */
     *mpi_off = (MPI_Offset)addr;
@@ -230,13 +249,10 @@ H5FD_mpi_haddr_to_MPIOff(haddr_t addr, MPI_Offset *mpi_off /*out*/)
  *
  *              Failure:	Negative
  *
- * Programmer:	Houjun Tang
- *              May 19, 2022
- *
  *-------------------------------------------------------------------------
  */
 herr_t
-H5FD_mpi_get_file_sync_required(H5FD_t *file, hbool_t *file_sync_required)
+H5FD_mpi_get_file_sync_required(H5FD_t *file, bool *file_sync_required)
 {
     const H5FD_class_t *cls;
     uint64_t            flags                  = H5FD_CTL_ROUTE_TO_TERMINAL_VFD_FLAG;
@@ -245,14 +261,14 @@ H5FD_mpi_get_file_sync_required(H5FD_t *file, hbool_t *file_sync_required)
 
     FUNC_ENTER_NOAPI(FAIL)
 
-    HDassert(file);
+    assert(file);
     cls = (const H5FD_class_t *)(file->cls);
-    HDassert(cls);
-    HDassert(cls->ctl); /* All MPI drivers must implement this */
+    assert(cls);
+    assert(cls->ctl); /* All MPI drivers must implement this */
 
     /* Dispatch to driver */
     if ((cls->ctl)(file, H5FD_CTL_GET_MPI_FILE_SYNC_OPCODE, flags, NULL, file_sync_required_ptr) < 0)
-        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, FAIL, "driver get_mpi_file_synce request failed")
+        HGOTO_ERROR(H5E_VFL, H5E_CANTGET, FAIL, "driver get_mpi_file_synce request failed");
 
 done:
     FUNC_LEAVE_NOAPI(ret_value)
@@ -278,9 +294,6 @@ done:
  * Return:	Success:	0
  *		Failure:	-1
  *
- * Programmer:	rky
- *              19981207
- *
  *-------------------------------------------------------------------------
  */
 herr_t
@@ -294,11 +307,11 @@ H5FD_mpio_wait_for_left_neighbor(H5FD_t *_file)
 
     FUNC_ENTER_NOAPI(FAIL)
 
-    HDassert(file);
-    HDassert(H5FD_MPIO == file->pub.driver_id);
+    assert(file);
+    assert(H5FD_MPIO == file->pub.driver_id);
 
     /* Portably initialize MPI status variable */
-    HDmemset(&rcvstat, 0, sizeof(MPI_Status));
+    memset(&rcvstat, 0, sizeof(MPI_Status));
 
     /* p0 has no left neighbor; all other procs wait for msg */
     if (file->mpi_rank != 0) {
@@ -329,9 +342,6 @@ done:
  * Return:	Success:	0
  *		Failure:	-1
  *
- * Programmer:	rky
- *              19981207
- *
  *-------------------------------------------------------------------------
  */
 herr_t
@@ -344,8 +354,8 @@ H5FD_mpio_signal_right_neighbor(H5FD_t *_file)
 
     FUNC_ENTER_NOAPI(FAIL)
 
-    HDassert(file);
-    HDassert(H5FD_MPIO == file->pub.driver_id);
+    assert(file);
+    assert(H5FD_MPIO == file->pub.driver_id);
 
     if (file->mpi_rank != (file->mpi_size - 1))
         if (MPI_SUCCESS !=

@@ -20,32 +20,35 @@
   # Copy all the HDF5 files from the source directory into the test directory
   # --------------------------------------------------------------------
   set (LIST_HDF5_TEST_FILES
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/h5copy_extlinks_src.h5
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/h5copy_extlinks_trg.h5
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/h5copy_ref.h5
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/h5copytst.h5
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/tudfilter.h5
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/tudfilter2.h5
+      h5copy_extlinks_src.h5
+      h5copy_extlinks_trg.h5
+      h5copy_ref.h5
+      h5copytst.h5
+      tudfilter.h5
+      tudfilter2.h5
   )
 
   set (LIST_OTHER_TEST_FILES
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/h5copy_misc1.out
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/h5copy_misc1.err
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/tudfilter.h5.txt
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/tudfilter.h5_ERR.txt
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/h5copy_plugin_fail_ERR.out.h5.txt
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/h5copy_plugin_test.out.h5.txt
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/h5copy_help1.ddl
-      ${HDF5_TOOLS_TEST_H5COPY_SOURCE_DIR}/testfiles/h5copy_help2.ddl
+      h5copy_misc1.out
+      h5copy_misc1.err
+      tudfilter.h5.txt
+      tudfilter.h5_ERR.txt
+      h5copy_plugin_fail_ERR.out.h5.txt
+      h5copy_plugin_test.out.h5.txt
+      h5copy_help1.ddl
+      h5copy_help2.ddl
   )
 
   file (MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/testfiles")
 
-  foreach (listfiles ${LIST_HDF5_TEST_FILES} ${LIST_OTHER_TEST_FILES})
-    get_filename_component(fname "${listfiles}" NAME)
-    HDFTEST_COPY_FILE("${listfiles}" "${PROJECT_BINARY_DIR}/testfiles/${fname}" "h5copy_files")
+  foreach (listfiles ${LIST_HDF5_TEST_FILES})
+    HDFTEST_COPY_FILE("${PROJECT_SOURCE_DIR}/testfiles/${listfiles}" "${PROJECT_BINARY_DIR}/testfiles/${listfiles}" "h5copy_files")
   endforeach ()
-  add_custom_target(h5copy_files ALL COMMENT "Copying files needed by h5copy tests" DEPENDS ${h5copy_files_list})
+
+  foreach (listothers ${LIST_OTHER_TEST_FILES})
+    HDFTEST_COPY_FILE("${PROJECT_SOURCE_DIR}/expected/${listothers}" "${PROJECT_BINARY_DIR}/testfiles/${listothers}" "h5copy_files")
+  endforeach ()
+   add_custom_target(h5copy_files ALL COMMENT "Copying files needed by h5copy tests" DEPENDS ${h5copy_files_list})
 
 ##############################################################################
 ##############################################################################
@@ -68,6 +71,9 @@
         COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:h5copy${tgt_file_ext}> -f ${fparam} -i ./testfiles/${infile} -o ./testfiles/${testname}.out.h5 ${vparam} ${sparam} ${srcname} ${dparam} ${dstname} ${ARGN}
     )
     set_tests_properties (H5COPY_F-${testname} PROPERTIES DEPENDS H5COPY_F-${testname}-clear-objects)
+    if ("H5COPY_F-${testname}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+      set_tests_properties (H5COPY_F-${testname} PROPERTIES DISABLED true)
+    endif ()
 
     # resultcode=2 will cause the test to skip the diff test
     if (NOT "${resultcode}" STREQUAL "2")
@@ -78,6 +84,9 @@
       set_tests_properties (H5COPY_F-${testname}-DIFF PROPERTIES DEPENDS H5COPY_F-${testname})
       if ("${resultcode}" STREQUAL "1")
         set_tests_properties (H5COPY_F-${testname}-DIFF PROPERTIES WILL_FAIL "true")
+      endif ()
+      if ("H5COPY_F-${testname}-DIFF" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+        set_tests_properties (H5COPY_F-${testname}-DIFF PROPERTIES DISABLED true)
       endif ()
     endif ()
     add_test (
@@ -103,6 +112,9 @@
         COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:h5copy${tgt_file_ext}> -i ./testfiles/${infile} -o ./testfiles/${testname}.out.h5 ${vparam} ${sparam} ${srcname} ${dparam} ${dstname} ${ARGN}
     )
     set_tests_properties (H5COPY-${testname} PROPERTIES DEPENDS H5COPY-${testname}-clear-objects)
+    if ("H5COPY-${testname}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+      set_tests_properties (H5COPY-${testname} PROPERTIES DISABLED true)
+    endif ()
 
     # resultcode=2 will cause the test to skip the diff test
     if (NOT "${resultcode}" STREQUAL "2")
@@ -113,6 +125,9 @@
       set_tests_properties (H5COPY-${testname}-DIFF PROPERTIES DEPENDS H5COPY-${testname})
       if ("${resultcode}" STREQUAL "1")
         set_tests_properties (H5COPY-${testname}-DIFF PROPERTIES WILL_FAIL "true")
+      endif ()
+      if ("H5COPY-${testname}-DIFF" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+        set_tests_properties (H5COPY-${testname}-DIFF PROPERTIES DISABLED true)
       endif ()
     endif ()
     add_test (
@@ -132,7 +147,7 @@
           NAME H5COPY-${testname}-${skipresultfile}
           COMMAND ${CMAKE_COMMAND} -E echo "SKIP ${testname}-${skipresultfile} ${ARGN}"
       )
-      set_property(TEST H5COPY-${testname}-${skipresultfile} PROPERTY DISABLED)
+      set_property(TEST H5COPY-${testname}-${skipresultfile} PROPERTY DISABLED true)
     endif ()
   endmacro ()
 
@@ -148,12 +163,18 @@
         COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:h5copy${tgt_file_ext}> -i ./testfiles/${infile} -o ./testfiles/${testname}.out.h5 -v -s ${psparam} -d ${pdparam}
     )
     set_tests_properties (H5COPY-${testname}-prefill PROPERTIES DEPENDS H5COPY-${testname}-clear-objects)
+    if ("H5COPY-${testname}-prefill" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+      set_tests_properties (H5COPY-${testname}-prefill PROPERTIES DISABLED true)
+    endif ()
 
     add_test (
         NAME H5COPY-${testname}
         COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:h5copy${tgt_file_ext}> -i ./testfiles/${infile} -o ./testfiles/${testname}.out.h5 ${vparam} ${sparam} ${srcname} ${dparam} ${dstname} ${ARGN}
     )
     set_tests_properties (H5COPY-${testname} PROPERTIES DEPENDS H5COPY-${testname}-prefill)
+    if ("H5COPY-${testname}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+      set_tests_properties (H5COPY-${testname} PROPERTIES DISABLED true)
+    endif ()
     # resultcode=2 will cause the test to skip the diff test
     if (NOT "${resultcode}" STREQUAL "2")
       add_test (
@@ -163,6 +184,9 @@
       set_tests_properties (H5COPY-${testname}-DIFF PROPERTIES DEPENDS H5COPY-${testname})
       if ("${resultcode}" STREQUAL "1")
         set_tests_properties (H5COPY-${testname}-DIFF PROPERTIES WILL_FAIL "true")
+      endif ()
+      if ("H5COPY-${testname}-DIFF" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+        set_tests_properties (H5COPY-${testname}-DIFF PROPERTIES DISABLED true)
       endif ()
     endif ()
     add_test (
@@ -188,12 +212,18 @@
         COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:h5copy${tgt_file_ext}> -i ./testfiles/${pfile} -o ./testfiles/${testname}.out.h5 -v -s ${psparam} -d ${pdparam}
     )
     set_tests_properties (H5COPY_SAME-${testname}-prefill PROPERTIES DEPENDS H5COPY_SAME-${testname}-clear-objects)
+    if ("H5COPY_SAME-${testname}-prefill" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+      set_tests_properties (H5COPY_SAME-${testname}-prefill PROPERTIES DISABLED true)
+    endif ()
 
     add_test (
         NAME H5COPY_SAME-${testname}
         COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:h5copy${tgt_file_ext}> -i ./testfiles/${testname}.out.h5 -o ./testfiles/${testname}.out.h5 ${vparam} ${sparam} ${srcname} ${dparam} ${dstname} ${ARGN}
     )
     set_tests_properties (H5COPY_SAME-${testname} PROPERTIES DEPENDS H5COPY_SAME-${testname}-prefill)
+    if ("H5COPY_SAME-${testname}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+      set_tests_properties (H5COPY_SAME-${testname} PROPERTIES DISABLED true)
+    endif ()
     # resultcode=2 will cause the test to skip the diff test
     if (NOT "${resultcode}" STREQUAL "2")
       add_test (
@@ -203,6 +233,9 @@
       set_tests_properties (H5COPY_SAME-${testname}-DIFF PROPERTIES DEPENDS H5COPY_SAME-${testname})
       if ("${resultcode}" STREQUAL "1")
         set_tests_properties (H5COPY_SAME-${testname}-DIFF PROPERTIES WILL_FAIL "true")
+      endif ()
+      if ("H5COPY_SAME-${testname}-DIFF" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+        set_tests_properties (H5COPY_SAME-${testname}-DIFF PROPERTIES DISABLED true)
       endif ()
     endif ()
     add_test (
@@ -220,7 +253,7 @@
   # Similar to ADD_H5_TEST macro. Compare to outputs from source & target
   # files instead of checking with h5ls.
   #
-  macro (ADD_H5_CMP_TEST testname resultcode infile vparam sparam srcname dparam dstname)
+  macro (ADD_H5_CMP_TEST testname resultcode result_errcheck infile vparam sparam srcname dparam dstname)
     # Remove any output file left over from previous test run
     add_test (
         NAME H5COPY-CMP-${testname}-clear-objects
@@ -232,7 +265,6 @@
       if ("${resultcode}" STREQUAL "1")
         set_tests_properties (H5COPY-CMP-${testname} PROPERTIES WILL_FAIL "true")
       endif ()
-      set_tests_properties (H5COPY-CMP-${testname} PROPERTIES DEPENDS H5COPY-CMP-${testname}-clear-objects)
     else ()
       add_test (
           NAME H5COPY-CMP-${testname}
@@ -244,11 +276,14 @@
               -D "TEST_OUTPUT=./testfiles/${testname}.out.out"
               -D "TEST_EXPECT=${resultcode}"
               -D "TEST_REFERENCE=./testfiles/${testname}.out"
-              -D "TEST_ERRREF=./testfiles/${testname}.err"
+              -D "TEST_ERRREF=${result_errcheck}"
               -D "TEST_MASK=true"
-              -P "${HDF_RESOURCES_DIR}/runTest.cmake"
+              -P "${HDF_RESOURCES_DIR}/grepTest.cmake"
       )
-      set_tests_properties (H5COPY-CMP-${testname} PROPERTIES DEPENDS H5COPY-CMP-${testname}-clear-objects)
+    endif ()
+    set_tests_properties (H5COPY-CMP-${testname} PROPERTIES DEPENDS H5COPY-CMP-${testname}-clear-objects)
+    if ("H5COPY-CMP-${testname}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+      set_tests_properties (H5COPY-CMP-${testname} PROPERTIES DISABLED true)
     endif ()
     add_test (
         NAME H5COPY-CMP-${testname}-clean-objects
@@ -300,6 +335,9 @@
         )
       endif ()
       set_tests_properties (H5COPY_UD-${testname} PROPERTIES DEPENDS H5COPY_UD-${testname}-clear-objects)
+      if ("H5COPY_UD-${testname}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+        set_tests_properties (H5COPY_UD-${testname} PROPERTIES DISABLED true)
+      endif ()
       add_test (
           NAME H5COPY_UD-${testname}-DIFF
           COMMAND "${CMAKE_COMMAND}"
@@ -317,6 +355,9 @@
               -P "${HDF_RESOURCES_DIR}/runTest.cmake"
       )
       set_tests_properties (H5COPY_UD-${testname}-DIFF PROPERTIES DEPENDS H5COPY_UD-${testname})
+      if ("H5COPY_UD-${testname}-DIFF" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+        set_tests_properties (H5COPY_UD-${testname}-DIFF PROPERTIES DISABLED true)
+      endif ()
       add_test (
           NAME H5COPY_UD-${testname}-clean-objects
           COMMAND ${CMAKE_COMMAND} -E remove testfiles/${testname}.out.h5
@@ -370,6 +411,9 @@
         )
       endif ()
       set_tests_properties (H5COPY_UD_ERR-${testname} PROPERTIES DEPENDS H5COPY_UD_ERR-${testname}-clear-objects)
+      if ("H5COPY_UD_ERR-${testname}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+        set_tests_properties (H5COPY_UD_ERR-${testname} PROPERTIES DISABLED true)
+      endif ()
       add_test (
           NAME H5COPY_UD_ERR-${testname}-DIFF
           COMMAND "${CMAKE_COMMAND}"
@@ -387,6 +431,9 @@
               -P "${HDF_RESOURCES_DIR}/runTest.cmake"
       )
       set_tests_properties (H5COPY_UD_ERR-${testname}-DIFF PROPERTIES DEPENDS H5COPY_UD_ERR-${testname})
+      if ("H5COPY_UD_ERR-${testname}-DIFF" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+        set_tests_properties (H5COPY_UD_ERR-${testname}-DIFF PROPERTIES DISABLED true)
+      endif ()
       add_test (
           NAME H5COPY_UD_ERR-${testname}-clean-objects
           COMMAND ${CMAKE_COMMAND} -E remove testfiles/${testname}_ERR.out.h5
@@ -419,6 +466,9 @@
     set_tests_properties (H5COPY-${resultfile} PROPERTIES
         WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
     )
+    if ("H5COPY-${resultfile}" MATCHES "${HDF5_DISABLE_TESTS_REGEX}")
+      set_tests_properties (H5COPY-${resultfile} PROPERTIES DISABLED true)
+    endif ()
   endmacro ()
 
 ##############################################################################
@@ -548,7 +598,7 @@
   #-----------------------------------------------------------------
   # "Test copying object into group which doesn't exist, without -p"
   #
-  ADD_H5_CMP_TEST (h5copy_misc1 1 ${HDF_FILE1}.h5 -v -s /simple -d /g1/g2/simple)
+  ADD_H5_CMP_TEST (h5copy_misc1 1 "h5copy error" ${HDF_FILE1}.h5 -v -s /simple -d /g1/g2/simple)
 
   #-------------------------------------------
   # "Test copying objects to the same file "

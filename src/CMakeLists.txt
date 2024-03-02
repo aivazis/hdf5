@@ -278,34 +278,12 @@ set (H5FD_HDRS
     ${HDF5_SRC_DIR}/H5FDsplitter.h
     ${HDF5_SRC_DIR}/H5FDstdio.h
     ${HDF5_SRC_DIR}/H5FDwindows.h
-    ${H5FD_SUBFILING_DIR}/H5FDsubfiling.h
-    ${H5FD_SUBFILING_DIR}/H5FDioc.h
 )
 
-# Append Subfiling VFD and Mercury sources to H5FD interface if Subfiling VFD is built
-if (HDF5_ENABLE_SUBFILING_VFD)
-  set (MERCURY_UTIL_SOURCES
-      ${H5FD_SUBFILING_DIR}/mercury/src/util/mercury_dlog.c
-      ${H5FD_SUBFILING_DIR}/mercury/src/util/mercury_log.c
-      ${H5FD_SUBFILING_DIR}/mercury/src/util/mercury_thread.c
-      ${H5FD_SUBFILING_DIR}/mercury/src/util/mercury_thread_condition.c
-      ${H5FD_SUBFILING_DIR}/mercury/src/util/mercury_thread_pool.c
-      ${H5FD_SUBFILING_DIR}/mercury/src/util/mercury_thread_mutex.c
-      ${H5FD_SUBFILING_DIR}/mercury/src/util/mercury_util.c
-  )
-
-  set (H5FD_SUBFILING_SOURCES
-      ${H5FD_SUBFILING_DIR}/H5FDioc.c
-      ${H5FD_SUBFILING_DIR}/H5FDioc_int.c
-      ${H5FD_SUBFILING_DIR}/H5FDioc_threads.c
-      ${H5FD_SUBFILING_DIR}/H5FDsubfiling.c
-      ${H5FD_SUBFILING_DIR}/H5FDsubfile_int.c
-      ${H5FD_SUBFILING_DIR}/H5subfiling_common.c
-      ${MERCURY_UTIL_SOURCES}
-  )
-
-  list (APPEND H5FD_SOURCES ${H5FD_SUBFILING_SOURCES})
-endif()
+# Append Subfiling VFD and Mercury sources to H5FD
+# interface if Subfiling VFD is built. Append Subfiling
+# VFD public headers to H5FD_HDRS regardless.
+add_subdirectory (${H5FD_SUBFILING_DIR})
 
 IDE_GENERATED_PROPERTIES ("H5FD" "${H5FD_HDRS}" "${H5FD_SOURCES}" )
 
@@ -864,7 +842,6 @@ set (H5_PUBLIC_HEADERS
     ${H5TS_HDRS}
     ${H5VL_HDRS}
     ${H5Z_HDRS}
-    ${subfile_HDRS}
 )
 
 set (H5_PRIVATE_HEADERS
@@ -1081,7 +1058,7 @@ endif ()
 if (BUILD_STATIC_LIBS)
   add_library (${HDF5_LIB_TARGET} STATIC ${common_SRCS} H5build_settings.c ${H5_PUBLIC_HEADERS} ${H5_PRIVATE_HEADERS} ${H5_GENERATED_HEADERS} ${H5_MODULE_HEADERS})
   target_include_directories (${HDF5_LIB_TARGET}
-      PRIVATE "${HDF5_SRC_INCLUDE_DIRS};${HDF5_SRC_BINARY_DIR};$<$<BOOL:${HDF5_ENABLE_PARALLEL}>:${MPI_C_INCLUDE_DIRS}>"
+      PRIVATE "${HDF5_SRC_INCLUDE_DIRS};${HDF5_SRC_BINARY_DIR};${HDF5_COMP_INCLUDE_DIRECTORIES};$<$<BOOL:${HDF5_ENABLE_PARALLEL}>:${MPI_C_INCLUDE_DIRS}>"
       INTERFACE "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>;$<BUILD_INTERFACE:${HDF5_SRC_INCLUDE_DIRS};${HDF5_SRC_BINARY_DIR}>"
   )
   target_compile_options(${HDF5_LIB_TARGET} PRIVATE "${HDF5_CMAKE_C_FLAGS}")
@@ -1114,7 +1091,7 @@ endif ()
 if (BUILD_SHARED_LIBS)
   add_library (${HDF5_LIBSH_TARGET} SHARED ${common_SRCS} H5build_settings.c ${H5_PUBLIC_HEADERS} ${H5_PRIVATE_HEADERS} ${H5_GENERATED_HEADERS} ${H5_MODULE_HEADERS})
   target_include_directories (${HDF5_LIBSH_TARGET}
-      PRIVATE "${HDF5_SRC_INCLUDE_DIRS};${HDF5_SRC_BINARY_DIR};$<$<BOOL:${HDF5_ENABLE_PARALLEL}>:${MPI_C_INCLUDE_DIRS}>"
+      PRIVATE "${HDF5_SRC_INCLUDE_DIRS};${HDF5_SRC_BINARY_DIR};${HDF5_COMP_INCLUDE_DIRECTORIES};$<$<BOOL:${HDF5_ENABLE_PARALLEL}>:${MPI_C_INCLUDE_DIRS}>"
       PUBLIC "$<$<BOOL:${HDF5_ENABLE_HDFS}>:${HDFS_INCLUDE_DIR}>"
       INTERFACE "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>;$<BUILD_INTERFACE:${HDF5_SRC_INCLUDE_DIRS};${HDF5_SRC_BINARY_DIR}>"
   )

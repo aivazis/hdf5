@@ -25,23 +25,23 @@ static void usage(void);
 static void
 usage(void)
 {
-    HDfprintf(stderr, "usage: h5delete [-f] <filename>\n");
+    fprintf(stderr, "usage: h5delete [-f] <filename>\n");
 }
 
 int
 main(int argc, char *argv[])
 {
-    hbool_t     quiet = FALSE;
+    bool        quiet = false;
     const char *name  = NULL;
     int         ret   = 0;
 
     switch (argc) {
         case 3:
-            if (HDstrcmp(argv[1], "-f") != 0) {
+            if (strcmp(argv[1], "-f") != 0) {
                 usage();
                 return EXIT_FAILURE;
             }
-            quiet = TRUE;
+            quiet = true;
             name  = argv[2];
             break;
         case 2:
@@ -60,7 +60,7 @@ main(int argc, char *argv[])
     H5E_END_TRY
 
     if (ret < 0 && !quiet)
-        HDfprintf(stderr, "Unable to delete storage at: %s\n", name);
+        fprintf(stderr, "Unable to delete storage at: %s\n", name);
 
     return ret < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }

@@ -368,7 +368,6 @@ H5_FCDLL int_f h5otoken_cmp_c(hid_t_f *loc_id, H5O_token_t *token1, H5O_token_t 
  * Functions from H5Pf.c
  */
 H5_FCDLL int_f h5pcreate_c(hid_t_f *cls, hid_t_f *prp_id);
-H5_FCDLL int_f h5pclose_c(hid_t_f *prp_id);
 H5_FCDLL int_f h5pcopy_c(hid_t_f *prp_id, hid_t_f *new_prp_id);
 H5_FCDLL int_f h5pequal_c(hid_t_f *plist1_id, hid_t_f *plist2_id, int_f *c_flag);
 H5_FCDLL int_f h5pget_class_c(hid_t_f *prp_id, hid_t_f *classtype);
@@ -376,9 +375,7 @@ H5_FCDLL int_f h5pset_deflate_c(hid_t_f *prp_id, int_f *level);
 H5_FCDLL int_f h5pset_chunk_c(hid_t_f *prp_id, int_f *rank, hsize_t_f *dims);
 H5_FCDLL int_f h5pget_chunk_c(hid_t_f *prp_id, int_f *max_rank, hsize_t_f *dims);
 H5_FCDLL int_f h5pset_file_image_c(hid_t_f *fapl_id, void *buf_ptr, size_t_f *buf_len);
-H5_FCDLL int_f h5pset_fill_value_c(hid_t_f *prp_id, hid_t_f *type_id, void *fillvalue);
 H5_FCDLL int_f h5pget_file_image_c(hid_t_f *fapl_id, void **buf_ptr, size_t_f *buf_len);
-H5_FCDLL int_f h5pget_fill_value_c(hid_t_f *prp_id, hid_t_f *type_id, void *fillvalue);
 H5_FCDLL int_f h5pset_preserve_c(hid_t_f *prp_id, int_f *flag);
 H5_FCDLL int_f h5pget_preserve_c(hid_t_f *prp_id, int_f *flag);
 H5_FCDLL int_f h5pget_version_c(hid_t_f *prp_id, int_f *boot, int_f *freelist, int_f *stab, int_f *shhdr);
@@ -453,9 +450,6 @@ H5_FCDLL int_f h5pset_small_data_block_size_c(hid_t_f *plist, hsize_t_f *size);
 H5_FCDLL int_f h5pget_small_data_block_size_c(hid_t_f *plist, hsize_t_f *size);
 H5_FCDLL int_f h5pset_hyper_vector_size_c(hid_t_f *plist, size_t_f *size);
 H5_FCDLL int_f h5pget_hyper_vector_size_c(hid_t_f *plist, size_t_f *size);
-H5_FCDLL int_f h5pcreate_class_c(hid_t_f *parent, _fcd name, int_f *name_len, hid_t_f *cls,
-                                 H5P_cls_create_func_t create, void *create_data, H5P_cls_copy_func_t copy,
-                                 void *copy_data, H5P_cls_close_func_t close, void *close_data);
 H5_FCDLL int_f h5pregister_c(hid_t_f *cls, _fcd name, int_f *name_len, size_t_f *size, void *value);
 H5_FCDLL int_f h5pinsert_c(hid_t_f *plist, _fcd name, int_f *name_len, size_t_f *size, void *value);
 H5_FCDLL int_f h5pset_c(hid_t_f *prp_id, _fcd name, int_f *name_len, void *value);

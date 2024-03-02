@@ -185,8 +185,8 @@ test_conv(hid_t file)
     for (i = 0; i < ds_size; i++)
         if (data1[i] != data2[i]) {
             H5_FAILED();
-            HDprintf("    1. data1[%zu]=%d, data2[%zu]=%d (should be same)\n", i, (int)data1[i], i,
-                     (int)data2[i]);
+            printf("    1. data1[%zu]=%d, data2[%zu]=%d (should be same)\n", i, (int)data1[i], i,
+                   (int)data2[i]);
             goto error;
         }
 
@@ -197,8 +197,8 @@ test_conv(hid_t file)
     for (i = 0; i < ds_size; i++)
         if ((int)data1[i] != (int)data_short[i]) {
             H5_FAILED();
-            HDprintf("    2. data1[%zu]=%d, data_short[%zu]=%d (should be same)\n", i, (int)data1[i], i,
-                     (int)data_short[i]);
+            printf("    2. data1[%zu]=%d, data_short[%zu]=%d (should be same)\n", i, (int)data1[i], i,
+                   (int)data_short[i]);
             goto error;
         }
 
@@ -209,8 +209,8 @@ test_conv(hid_t file)
     for (i = 0; i < ds_size; i++)
         if ((int)data1[i] != (int)data_double[i]) {
             H5_FAILED();
-            HDprintf("    3. data1[%zu]=%d, data_double[%zu]=%d (should be same)\n", i, (int)data1[i], i,
-                     (int)data_double[i]);
+            printf("    3. data1[%zu]=%d, data_double[%zu]=%d (should be same)\n", i, (int)data1[i], i,
+                   (int)data_double[i]);
             goto error;
         }
 
@@ -235,8 +235,8 @@ test_conv(hid_t file)
     for (i = 0; i < ds_size; i++)
         if ((int)data1[i] != data_int[i]) {
             H5_FAILED();
-            HDprintf("    4. data1[%zu]=%d, data_int[%zu]=%d (should be same)\n", i, (int)data1[i], i,
-                     data_int[i]);
+            printf("    4. data1[%zu]=%d, data_int[%zu]=%d (should be same)\n", i, (int)data1[i], i,
+                   data_int[i]);
             goto error;
         }
 
@@ -261,8 +261,8 @@ test_conv(hid_t file)
     for (i = 0; i < ds_size; i++)
         if ((int)data1[i] != (int)data_double[i]) {
             H5_FAILED();
-            HDprintf("    5. data1[%zu]=%d, data_double[%zu]=%d (should be same)\n", i, (int)data1[i], i,
-                     (int)data_double[i]);
+            printf("    5. data1[%zu]=%d, data_double[%zu]=%d (should be same)\n", i, (int)data1[i], i,
+                   (int)data_double[i]);
             goto error;
         }
 
@@ -360,8 +360,7 @@ test_tr1(hid_t file)
     for (size_t i = 0; i < ds_size; i++)
         if (data1[i] != data2[i]) {
             H5_FAILED();
-            HDprintf("    data1[%zu]=%d, data2[%zu]=%d (should be same)\n", i, (int)data1[i], i,
-                     (int)data2[i]);
+            printf("    data1[%zu]=%d, data2[%zu]=%d (should be same)\n", i, (int)data1[i], i, (int)data2[i]);
             goto error;
         }
 
@@ -461,8 +460,7 @@ test_tr2(hid_t file)
     for (i = 0; i < ds_size; i++)
         if (data1[i] != data2[i]) {
             H5_FAILED();
-            HDprintf("    data1[%zu]=%d, data2[%zu]=%d (should be same)\n", i, (int)data1[i], i,
-                     (int)data2[i]);
+            printf("    data1[%zu]=%d, data2[%zu]=%d (should be same)\n", i, (int)data1[i], i, (int)data2[i]);
             goto error;
         }
 
@@ -534,7 +532,7 @@ test_value_dsnt_exist(void)
     {
         ret = H5Tenum_valueof(tid, "SAX", &val);
     }
-    H5E_END_TRY;
+    H5E_END_TRY
     if (ret >= 0)
         FAIL_PUTS_ERROR("H5Tenum_valueof should not pass with a non-existing name");
 
@@ -543,7 +541,7 @@ test_value_dsnt_exist(void)
     {
         ret = H5Tenum_nameof(tid, &val, name, size);
     }
-    H5E_END_TRY;
+    H5E_END_TRY
     if (ret >= 0)
         FAIL_PUTS_ERROR("H5Tenum_nameof should not pass with a non-existing value");
 
@@ -564,10 +562,10 @@ test_value_dsnt_exist(void)
         {
             ret = H5Tenum_nameof(tid, &BAD_VALUES[i], name, size);
         }
-        H5E_END_TRY;
+        H5E_END_TRY
         if (ret >= 0) {
             H5_FAILED();
-            HDprintf("Bad value: %d -- ", BAD_VALUES[i]);
+            printf("Bad value: %d -- ", BAD_VALUES[i]);
             PUTS_ERROR("H5Tenum_nameof should not pass with a non-existing value");
         }
     }
@@ -578,10 +576,10 @@ test_value_dsnt_exist(void)
         {
             ret = H5Tenum_valueof(tid, BAD_NAMES[i], &val);
         }
-        H5E_END_TRY;
+        H5E_END_TRY
         if (ret >= 0) {
             H5_FAILED();
-            HDprintf("Bad name: %s -- ", BAD_NAMES[i]);
+            printf("Bad name: %s -- ", BAD_NAMES[i]);
             PUTS_ERROR("H5Tenum_valueof should not pass with a non-existing name");
         }
     }
@@ -654,7 +652,7 @@ test_funcs(void)
     {
         ret = H5Tset_pad(tid, H5T_PAD_ZERO, H5T_PAD_ONE);
     }
-    H5E_END_TRY;
+    H5E_END_TRY
     if (ret >= 0)
         FAIL_PUTS_ERROR("H5Tset_pad should not work with enum types");
 
@@ -772,7 +770,7 @@ error:
         H5Tclose(cmpd_id);
         H5Tclose(copy_id);
     }
-    H5E_END_TRY;
+    H5E_END_TRY
     return 1;
 }
 
@@ -810,12 +808,12 @@ main(void)
     if (nerrors)
         goto error;
 
-    HDputs("All enum tests passed.");
+    puts("All enum tests passed.");
     h5_cleanup(FILENAME, fapl_id);
 
     return EXIT_SUCCESS;
 
 error:
-    HDputs("*** ENUM TESTS FAILED ***");
+    puts("*** ENUM TESTS FAILED ***");
     return EXIT_FAILURE;
 }
