@@ -1391,7 +1391,7 @@ H5FD_s3comms_s3r_read(s3r_t *handle, haddr_t offset, size_t len, void *dest)
 
         if (rangebytesstr != NULL) {
 #if S3COMMS_DEBUG >= S3COMMS_DEBUG_REQUESTS
-            fprintf(stdout, " -- request: %llu %zu\n", offset, len);
+            fprintf(stdout, " -- request: %lu %zu\n", offset, len);
 
 #endif
             if (FAIL == H5FD_s3comms_hrb_node_set(&headers, "Range", rangebytesstr))
