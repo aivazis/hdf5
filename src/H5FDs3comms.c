@@ -1653,7 +1653,7 @@ H5FD_s3comms_aws_canonical_request(char *canonical_request_dest, int _cr_size, c
     size_t      sh_size      = (size_t)_sh_size;
     size_t      cr_len       = 0; /* working length of canonical request str */
     size_t      sh_len       = 0; /* working length of signed headers str */
-    char        tmpstr[1024];
+    char        tmpstr[4096];
 
     /* "query params" refers to the optional element in the URL, e.g.
      *     http://bucket.aws.com/myfile.txt?max-keys=2&prefix=J
@@ -1699,8 +1699,8 @@ H5FD_s3comms_aws_canonical_request(char *canonical_request_dest, int _cr_size, c
 
         assert(node->magic == S3COMMS_HRB_NODE_MAGIC);
 
-        ret = snprintf(tmpstr, 1024, "%s:%s\n", node->lowername, node->value);
-        if (ret < 0 || ret >= 1024)
+        ret = snprintf(tmpstr, sizeof(tmpstr), "%s:%s\n", node->lowername, node->value);
+        if (ret < 0 || ret >= sizeof(tmpstr))
             HGOTO_ERROR(H5E_ARGS, H5E_BADVALUE, FAIL, "unable to concatenate HTTP header %s:%s",
                         node->lowername, node->value);
         cr_len += strlen(tmpstr);
@@ -1708,8 +1708,8 @@ H5FD_s3comms_aws_canonical_request(char *canonical_request_dest, int _cr_size, c
             HGOTO_ERROR(H5E_ARGS, H5E_BADVALUE, FAIL, "not enough space in canonical request");
         strcat(canonical_request_dest, tmpstr);
 
-        ret = snprintf(tmpstr, 1024, "%s;", node->lowername);
-        if (ret < 0 || ret >= 1024)
+        ret = snprintf(tmpstr, sizeof(tmpstr), "%s;", node->lowername);
+        if (ret < 0 || ret >= sizeof(tmpstr))
             HGOTO_ERROR(H5E_ARGS, H5E_BADVALUE, FAIL, "unable to append semicolon to lowername %s",
                         node->lowername);
         sh_len += strlen(tmpstr);
